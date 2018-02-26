@@ -69,6 +69,25 @@ BREATHE_DELAY_MAX   EQU 0x5E00					   ; The delay required
 
 ;-----------------------------------------------------------------------------------------------
 Start
+ ; SysTick_Init sets Systick for 12.5 ns
+ ; disable SysTick during setup
+    LDR R1, =NVIC_ST_CTRL_R
+    MOV R0, #0            ; Clear Enable         
+    STR R0, [R1] 
+; set reload to maximum reload value
+    LDR R1, =NVIC_ST_RELOAD_R 
+    LDR R0, =0x00FFFFFF;    ; Specify RELOAD value
+    STR R0, [R1]            ; reload at maximum       
+; writing any value to CURRENT clears it
+    LDR R1, =NVIC_ST_CURRENT_R 
+    MOV R0, #0              
+    STR R0, [R1]            ; clear counter
+; enable SysTick with core clock
+    LDR R1, =NVIC_ST_CTRL_R    
+    MOV R0, #0x0005    ; Enable but no interrupts (later)
+    STR R0, [R1]       ; ENABLE and CLK_SRC bits set
+    BX  LR 
+; Systick Finished initializing (No int.)
  ; TExaS_Init sets bus clock at 80 MHz
     BL  TExaS_Init ; voltmeter, scope on PD3
  ; Initialization
