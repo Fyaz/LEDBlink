@@ -161,9 +161,24 @@ Configure
 	MOV R0, #0x08;		8 bits in data_capture
 	MOV R1, #50;
 	
+	setting_data_capture
+	SUB R1,R1, #0x01
+	STR #0xFF, [R10]
+	ADD R10, R10, R0
+	CMP R1, #0x0;
+	BNE setting_data_capture
 	
+	MOV R1, #50;
+	MUL R0,R0, #0x04
+	setting_tine_capture
+	SUB R1,R1, #0x01
+	STR #0xFF, [R10]
+	ADD R10, R10, R0
+	CMP R1, #0x0;
+	BNE setting_time_capture
 	
-	
+	LDR R10, =data_capture
+	LDR R11,=time_capture
 	POP {R0, R1}
 	BX LR
 
