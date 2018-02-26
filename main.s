@@ -42,6 +42,7 @@ GPIO_PORTF_LOCK_R  EQU 0x40025520
 GPIO_PORTF_CR_R    EQU 0x40025524
 GPIO_LOCK_KEY      EQU 0x4C4F434B  ; Unlocks the GPIO_CR register
 SYSCTL_RCGCGPIO_R  EQU 0x400FE608
+
 ;Variables that hold the maximum values 
 MAX_DELAY		   EQU 0x1864A8		;0x249700	   ; The interval size of the delays
 BREATHE_DELAY_MAX   EQU 0x5E00					   ; The delay required
@@ -67,6 +68,8 @@ BREATHE_DELAY_MAX   EQU 0x5E00					   ; The delay required
 ;R6 = contains the current delay for on
 ;R7 = temporary variable mainly used for subroutine parameters
 ;R8 = temporary variable (each bit keeps track of a different value)
+;R10 = data_capture pointer
+;R11 = time_capture pointer
 ;	= bit 0: the bit for whether the button has been pushed or not
 ;	= bit 1: the bit for whether to be in the breathing animation or not
 ;R9 = holds the location for PORTF_DATA
@@ -94,6 +97,7 @@ Start
 ; Systick Finished initializing (No int.)
  ; TExaS_Init sets bus clock at 80 MHz
     BL  TExaS_Init ; voltmeter, scope on PD3
+    BL  Debug_Init ;
  ; Initialization
 	LDR	R0, =SYSCTL_RCGCGPIO_R;
 	LDR	R1, [R0];
@@ -148,6 +152,33 @@ Configure
 	ADD	R7, R2, #0;
 	
     CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
+    
+    ;Initiliazing Debug Dump
+    Debug_Init
+    	LDR R10, =data_capture
+	LDR R11, =time_capture;		Created pointers
+	PUSH {R0, R1}
+	MOV R0, #0x08;		8 bits in data_capture
+	MOV R1, #50;
+	
+	
+	
+	
+	POP {R0, R1}
+	BX LR
+
+    ;saves one data point
+    Debug_Capture
+    	PUSH {R0,R1}
+	LDR R0, =GPIO_PORTE_DATA_R
+	AND R0, R0, #0x03;		Capturing Pins E0 and E1
+	LDR R1, =NVIC_ST_CURRENT_R	Capturing Time
+	STR R0, [R10]
+	STR R1, [R11]
+	ADD R10, R10, #0x01
+	ADD R11, R11, #0x01
+	POP {R0,R1}
+	BX LR
 
 loop  
 ; The main loop engine
