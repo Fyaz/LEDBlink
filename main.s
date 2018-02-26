@@ -49,9 +49,10 @@ BREATHE_DELAY_MAX   EQU 0x5E00					   ; The delay required
      IMPORT  TExaS_Init
      THUMB
      AREA    DATA, ALIGN=2
-     ARR       SPACE 50
+     data_capture       SPACE 50
 ; Array of 50 8-byte numbers
-
+     time_capture	SPACE 200
+; Array of 50 32-byte numbers
 ;global variables go here
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
