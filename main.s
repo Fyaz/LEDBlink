@@ -46,6 +46,7 @@ SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 NVIC_ST_CTRL_R        EQU 0xE000E010
 NVIC_ST_RELOAD_R      EQU 0xE000E014
 NVIC_ST_CURRENT_R     EQU 0xE000E018
+
 NVIC_ST_CTRL_COUNT    EQU 0x00010000  ; Count flag
 NVIC_ST_CTRL_CLK_SRC  EQU 0x00000004  ; Clock Source
 NVIC_ST_CTRL_INTEN    EQU 0x00000002  ; Interrupt enable
@@ -70,11 +71,10 @@ delay_off		  SPACE 4		; how long the LED will stay off (in cycles)
 delay_on		  SPACE 4		; how long the LED will stay on (in cycles)
 prev_button_state SPACE	1		; captures whether a button has been released or pushed
 green_counter	  SPACE 1		; it counts everytime the main loop is run and toggles the blue LED after a certain time is met.
-
 ;Debuggin variables
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
 time_capture	SPACE 200	; Array of 50 32-byte numbers
-	
+NEntries 	SPACE 1		; Number of entries in either array	
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
      EXPORT  Start
@@ -350,14 +350,21 @@ setting_time_capture
 ;saves one data point
 Debug_Capture		
    	PUSH {R0,R1}
+	LDR R0 , =NEntries
+	CMP R0 , #50
+	BEQ DONE_C
 	LDR R0, =GPIO_PORTE_DATA_R
-	AND R0, R0, #0x03;		Capturing Pins E0 and E1
+	AND R0, R0, #0x02;		Capturing Pins E0 and E1
+	LSR R0, R0, #0x03;
+	LDR R1, =GPIO_PORTE_DATA_R
+	AND R1,R1,#0x01;
+	AND R0,R0,R1;
 	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
 	STR R0, [R10]
 	STR R1, [R11]
 	ADD R10, R10, #0x01
 	ADD R11, R11, #0x01
-	POP {R0,R1}
+DONE_C	POP {R0,R1}
 	BX LR;
 
 ;-------Toggle Green LED (PF2)------------------------------------------------------------------
