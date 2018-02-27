@@ -61,11 +61,6 @@ delay_inc	 	  SPACE 4		; how to increment the delays when we need to change them
 delay_off		  SPACE 4		; how long the LED will stay off (in cycles)
 delay_on		  SPACE 4		; how long the LED will stay on (in cycles)
 prev_button_state SPACE	1		; captures whether a button has been released or pushed
-	
-	;Breathing variables
-Breathe_delay_inc SPACE 4	; how much to increment the delays when we need to change them (during breathing)
-Breathe_delay_off SPACE 4	; how long the LED will stay off (in cycles, during breathing)
-Breathe_delay_on  SPACE	4	; how long the LED will stay on (in cycles, during breathing)
 		 
 	;Debuggin variables
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
