@@ -40,41 +40,45 @@ GPIO_PORTF_PUR_R   EQU 0x40025510
 GPIO_PORTF_DEN_R   EQU 0x4002551C
 GPIO_PORTF_LOCK_R  EQU 0x40025520
 GPIO_PORTF_CR_R    EQU 0x40025524
-GPIO_LOCK_KEY      EQU 0x4C4F434B  ; Unlocks the GPIO_CR register
+GPIO_LOCK_KEY      EQU 0x4C4F434B  	; Unlocks the GPIO_CR register
 SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 
 ;Variables that hold the maximum values 
 MAX_DELAY		   EQU 0x1864A8		;0x249700	   ; The interval size of the delays
-BREATHE_DELAY_MAX   EQU 0x5E00					   ; The delay required
+BREATHE_DELAY_MAX  EQU 0x5E00					   ; The delay required
 
      IMPORT  TExaS_Init
+	 IMPORT SysTick_Init
+     IMPORT SysTick_Wait
+     IMPORT SysTick_Wait10ms	 
+	 
      THUMB
+;------------Global Variables-------------------------------------------------------------------
      AREA    DATA, ALIGN=2
-     data_capture       SPACE 50
-; Array of 50 8-byte numbers
-     time_capture	SPACE 200
-; Array of 50 32-byte numbers
-;global variables go here
+     
+	;Blinking variables
+delay_inc	 	  SPACE 4		; how to increment the delays when we need to change them (1/5 of MAX_DELAY)
+delay_off		  SPACE 4		; how long the LED will stay off (in cycles)
+delay_on		  SPACE 4		; how long the LED will stay on (in cycles)
+prev_button_state SPACE	1		; captures whether a button has been released or pushed
+	
+	;Breathing variables
+Breathe_delay_inc SPACE 4	; how much to increment the delays when we need to change them (during breathing)
+Breathe_delay_off SPACE 4	; how long the LED will stay off (in cycles, during breathing)
+Breathe_delay_on  SPACE	4	; how long the LED will stay on (in cycles, during breathing)
+		 
+	;Debuggin variables
+data_capture  	SPACE 50	; Array of 50 8-byte numbers
+time_capture	SPACE 200	; Array of 50 32-byte numbers
+
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
      EXPORT  Start
 
-;RO = holds the location for the output register
-;R1 = used to hold the data from the registers (will be used to edit data)
-;R2 = Register that holds the value for the MAX_DELAY
-;R3 = temporary variable (Ex: used in delay as increment)
-;R4 = contains the increments of the delay (1/5 of MAX_DELAY)
-;R5 = contains the current delay for off
-;R6 = contains the current delay for on
-;R7 = temporary variable mainly used for subroutine parameters
-;R8 = temporary variable (each bit keeps track of a different value)
 ;R10 = data_capture pointer
 ;R11 = time_capture pointer
-;	= bit 0: the bit for whether the button has been pushed or not
-;	= bit 1: the bit for whether to be in the breathing animation or not
-;R9 = holds the location for PORTF_DATA
 
-;-----------------------------------------------------------------------------------------------
+;---------Main Code-----------------------------------------------------------------------------
 Start
  ; SysTick_Init sets Systick for 12.5 ns
  ; disable SysTick during setup
@@ -94,11 +98,12 @@ Start
     MOV R0, #0x0005    ; Enable but no interrupts (later)
     STR R0, [R1]       ; ENABLE and CLK_SRC bits set
     BX  LR 
-; Systick Finished initializing (No int.)
+	
  ; TExaS_Init sets bus clock at 80 MHz
     BL  TExaS_Init ; voltmeter, scope on PD3
-    BL  Debug_Init ;
- ; Initialization
+    ;BL  Debug_Init ;
+	
+ ; Port Initialization
 	LDR	R0, =SYSCTL_RCGCGPIO_R;
 	LDR	R1, [R0];
 	ORR	R1, R1, #0x30;			Start up Port F and Port E
@@ -108,147 +113,139 @@ Start
  ; Configure Port E
 	LDR	R0, =GPIO_PORTE_DIR_R;
 	LDR	R1, [R0];
-	ORR	R1, R1, #0x01;			PE0 is set to output (LED)
-	BIC	R1, R1, #0x12;			PE1,4 are set to input (buttons)
+	ORR	R1, R1, #0x01;				PE0 is set to output (LED)
+	BIC	R1, R1, #0x12;				PE1,4 are set to input (buttons)
 	STR	R1, [R0];
 	LDR	R0, =GPIO_PORTE_AFSEL_R;
 	LDR	R1, [R0];
-	MOV	R1, #0;					Disables the "alternate functions" in the port
+	MOV	R1, #0;						Disables the "alternate functions" in the port
 	STR	R1,	[R0];
 	LDR	R0, =GPIO_PORTE_DEN_R;
 	LDR	R1, [R0];
-	MOV	R1, #0xFF;				1 means enable digital I/O
+	MOV	R1, #0xFF;					1 means enable digital I/O
 	STR	R1, [R0];
 ; Configure Port F
 	LDR R1, =GPIO_PORTF_LOCK_R; 	2) unlock the lock register
-	LDR R0, =GPIO_LOCK_KEY;		unlock GPIO Port F Commit Register
+	LDR R0, =GPIO_LOCK_KEY;			unlock GPIO Port F Commit Register
 	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_CR_R;     enable commit for Port F
-	MOV R0, #0xFF;                1 means allow access
+	LDR R1, =GPIO_PORTF_CR_R;   	enable commit for Port F
+	MOV R0, #0xFF;              	1 means allow access
 	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_DIR_R;    5) set direction register
+	LDR R1, =GPIO_PORTF_DIR_R;  	5) set direction register
 	MOV R0,#0x0E;
 	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_AFSEL_R;  6) regular port function
-	MOV R0, #0;                   0 means disable alternate function
+	LDR R1, =GPIO_PORTF_AFSEL_R;	6) regular port function
+	MOV R0, #0;                   	0 means disable alternate function
 	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_PUR_R;    pull-up resistors for PF4,PF0
-	MOV R0, #0x11;                1)enable for negative logic
+	LDR R1, =GPIO_PORTF_PUR_R;    	pull-up resistors for PF4,PF0
+	MOV R0, #0x11;                	1)enable for negative logic
 	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_DEN_R;    7) enable Port F digital port
-	MOV R0, #0xFF;                1 means enable digital I/O
+	LDR R1, =GPIO_PORTF_DEN_R;    	7) enable Port F digital port
+	MOV R0, #0xFF;                	1 means enable digital I/O
 	STR R0, [R1];
 ; Setting up variables
 Configure
-	LDR	R0, =GPIO_PORTE_DATA_R;	R0 holds the location for the Data location of Port E
-	LDR	R9, =GPIO_PORTF_DATA_R;	R9 holds the location for the Data location of Port F
-	LDR	R2, =MAX_DELAY;
-	MOV	R3, #5;
-	UDIV R4, R2, R3;			The increments of the delay
+	LDR	R1, =MAX_DELAY;		
+	MOV	R2, #5;					
+	UDIV R2, R1, R2;		split the max delay into 5 equal sections
+	LDR	R1, =delay_inc;
+	STR	R2, [R1];			delay_inc = (MAX_DELAY / 5)
+	
+	LDR	R1, =delay_inc;
+	LDR	R2, [R1];
 	MOV	R3, #4;
-	MUL	R5, R4, R3;				Default: off for 4/5 of 80Hz
-	MOV	R3, #1;
-	MUL	R6, R4, R3;				Default: on for 1/5 of 80Hz
-	ADD	R7, R2, #0;
+	MUL	R2, R2, R3;	
+	LDR	R1, =delay_off;	
+	STR	R2, [R1];			Default: the delay_off starts @ 4/5 of the MAX_DELAY
+	
+	LDR	R1, =delay_inc;
+	LDR	R2, [R1];
+	LDR R1, =delay_on;
+	STR	R2, [R1];			Default: the delay_on on starts @ 1/5 of the MAX_DELAY
 	
     CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
-    
-    ;Initiliazing Debug Dump
-    Debug_Init
-    	LDR R10, =data_capture
-	LDR R11, =time_capture;		Created pointers
-	PUSH {R0, R1}
-	MOV R0, #0x08;		8 bits in data_capture
-	MOV R1, #50;
-	
-	setting_data_capture
-	SUB R1,R1, #0x01
-	STR #0xFF, [R10]
-	ADD R10, R10, R0
-	CMP R1, #0x0;
-	BNE setting_data_capture
-	
-	MOV R1, #50;
-	MUL R0,R0, #0x04
-	setting_tine_capture
-	SUB R1,R1, #0x01
-	STR #0xFF, [R10]
-	ADD R10, R10, R0
-	CMP R1, #0x0;
-	BNE setting_time_capture
-	
-	LDR R10, =data_capture
-	LDR R11,=time_capture
-	POP {R0, R1}
-	BX LR
 
-    ;saves one data point
-    Debug_Capture
-    	PUSH {R0,R1}
-	LDR R0, =GPIO_PORTE_DATA_R
-	AND R0, R0, #0x03;		Capturing Pins E0 and E1
-	LDR R1, =NVIC_ST_CURRENT_R	Capturing Time
-	STR R0, [R10]
-	STR R1, [R11]
-	ADD R10, R10, #0x01
-	ADD R11, R11, #0x01
-	POP {R0,R1}
-	BX LR
-
-loop  
+main_loop  
 ; The main loop engine
-	LDR	R1, [R9];
+	LDR	R1, =GPIO_PORTF_DATA_R;
+	LDR	R2, [R1];
+	
 ; If the button is pushed, Start breathing
-	AND	R3, R1, #0x10;			Check whether the button has been pushed or not
-	CMP	R3, #0x00;
-	BNE	ifPushed;				If SW1 is pushed, start the breathing
-	B Breathe_Start;
-
-ifPushed
-	LDR	R1, [R0];				<- R1 holds the data from the data register	
+	AND	R2, R2, #0x10;			Check whether the button has been pushed or not
+	CMP	R2, #0x00;
+	BNE	Blink_ifPushed;		If SW1 is pushed, start the breathing
+	BL Breathe_Start;
+	
+Blink_ifPushed
+	LDR	R1, =GPIO_PORTE_DATA_R;
+	LDR R2, =prev_button_state;
+	LDRB R2, [R2];
+	LDR	R3, [R1];				<- R3 holds the data from the PortE data register
+	AND	R3, R3, #0x02;			Check whether the button has been pushed or not
+	CMP R3, R2;					<- Check if the button is in the same state as before 
+	BEQ Blink;
+	LDR	R2, =prev_button_state;
+	STRB R3, [R2];
 ; If the button is pushed, set PE4 to 1
-	AND	R3, R1, #0x02;			Check whether the button has been pushed or not
 	CMP	R3, #0x00;			If the button is pushed
-	BNE	incrementDuty;
-	ORR	R8, #0x01;				<- Set R8 to 1 since the button was pushed.
-	B blink;
-incrementDuty
+	BNE	Blink_incrementDuty;
+	B Blink;
+Blink_incrementDuty
 ; Incrementing the duty time
-	AND	R3, R8, #0x01;
-	CMP	R3, #0x01;				
-	BNE	blink;				If the button has been pushed, but is not being pushed
-	SUB	R5, R5, R4;				Decrement the off time
-	ADD	R6, R6, R4;				Increment the on time
-	BIC	R8, #0x01;
-	CMP	R5, #0;
-	BPL	blink;				If the the off time is < 0 (off < 0%, on > 100%), reset the values to off = 100%, on = 0%
-	ADD	R5, R5, R2;				If off is negative, reset off time to max
-	MOV	R6, #0;					Reset the on time to 0 (light is always off)
-blink
+	LDR	R2, =delay_inc;
+	LDR	R2, [R2];				
+	LDR	R1, =delay_off;			
+	LDR	R3, [R1];				
+	SUB	R3, R3, R2;				Decrement the off time
+	STR	R3, [R1];
+	LDR	R1, =delay_on;
+	LDR	R3, [R1];
+	ADD	R3, R3, R2;				Increment the on time
+	STR R3, [R1];
+	
+	LDR	R1, =delay_off;
+	LDR	R2, [R1];
+	CMP	R2, #0;
+	BPL	Blink;				If the the off time is < 0 (off < 0%, on > 100%), reset the values to off = 100%, on = 0%
+	LDR	R2, =MAX_DELAY;
+	LDR R1, =delay_off;
+	STR R2, [R1];
+	LDR	R1, =delay_on;
+	MOV	R2, #0;					Reset the on time to 0 (light is always off)
+	STR	R2, [R1];
+	
+Blink
 ; Turn off the light and wait
-	BIC	R1, #0x01;		
-	STR	R1, [R0];
-	ADD	R7, R5, #0;
+	LDR	R1, =GPIO_PORTE_DATA_R;
+	LDR	R2, [R1];
+	BIC	R2, #0x01;
+	STR	R2, [R1];
+	LDR R2, =delay_off;
+	LDR R0, [R2];
 	BL	delay;			Delay the program for a amount of time specified in R7
 ; Turn on the light and wait
-	ORR	R1, #0x01;		
-	STR	R1, [R0];
-	ADD	R7, R6, #0;
+	LDR	R2, [R1];
+	ORR	R2, #0x01;		
+	STR	R2, [R1];
+	LDR R2, =delay_on;
+	LDR R0, [R2];
 	BL	delay;
 	
-    B   loop
+    B   main_loop
 ;-----------------------------------------------------------------------------------------------
 Breathe_Start
 ; a subroutine that handles all the breathing functionality by completly reworking everything
-	PUSH {r0-r7};	save the values of the of R0--R7
+	PUSH {R0-R7};
+	PUSH {R8, LR};
+	
 	; Setting up variables
+	LDR R0, =GPIO_PORTE_DATA_R;
+	LDR	R9, =GPIO_PORTF_DATA_R;
 	LDR	R2, =BREATHE_DELAY_MAX;
-	MOV	R3, #300;
+	MOV	R3, #500;
 	UDIV R4, R2, R3;			The increments of the delay
-	MOV	R3, #295;
-	MUL	R5, R4, R3;				Default: off for 4/5 of 80Hz
-	MOV	R3, #5;
-	MUL	R6, R4, R3;				Default: on for 1/5 of 80Hz
+	ADD	R5, R2, #0;				Default: off for 4/5 of 80Hz
+	MOV	R6, #0;				Default: on for 1/5 of 80Hz
 	ADD	R7, R2, #0;
 	
 Breathe_loop  
@@ -266,43 +263,102 @@ Breathe_incrementDuty
 	SUB	R5, R5, R4;				Decrement the off time
 	ADD	R6, R6, R4;				Increment the on time
 	CMP	R5, #0;
-	BMI Verse;
-	BEQ Verse;					Check if we've stopped or froze the delay of the light (either R5 or R6 reach zero)
+	BMI Breathe_Verse;
+	BEQ Breathe_Verse;					Check if we've stopped or froze the delay of the light (either R5 or R6 reach zero)
 	CMP	R6, #0;
-	BPL Breathe_blink;
-Verse
+	BPL Breathe;
+Breathe_Verse
 	MOV	R3, #-1;
 	MUL	R4, R4, R3;				Once we reach a maximum, down/up or up depending on the scenario
 	SUB	R5, R5, R4;				Decrement the off time
 	ADD	R6, R6, R4;				Increment the on time
-Breathe_blink
+Breathe
 ; Turn off the light and wait
 	BIC	R1, #0x01;		
 	STR	R1, [R0];
-	ADD	R7, R5, #0;
-	BL	delay;			Delay the program for a amount of time specified in R7
+	PUSH {R0, R1};
+	ADD	R0, R5, #0;
+	BL	delay;					Delay the program for a amount of time specified in R7
+	POP {R0, R1};
 ; Turn on the light and wait
 	ORR	R1, #0x01;		
 	STR	R1, [R0];
-	ADD	R7, R6, #0;
+	PUSH {R0, R1};
+	ADD	R0, R6, #0;
 	BL	delay;
+	POP {R0, R1};
 	
     B   Breathe_loop  
 	
 Breathe_Stop
-	POP	 {r0-r7};	restore the values of R0--R7
-	B loop;
+	POP {R8,LR};
+	POP {R0-R7};
+
+	BX LR;
 ;-----------------------------------------------------------------------------------------------
-; a subroutine that loops using the value at R7
 delay
-	MOV	R3, #0;
+; a subroutine that loops using the value at R0
+	PUSH {R0, R1};
+	MOV	R1, #0;
 delayLoop
-	CMP	R7, R3;			Loop until temporary value R3 reaches R2
+	CMP	R0, R1;			Loop until temporary value R1 reaches R0
 	BEQ	delayDone;
-	ADD	R3, R3, #1;	
+	ADD	R1, R1, #1;	
 	B	delayLoop;
 delayDone
+	POP {R0, R1};
 	BX LR;
+	
+;-------DEBUG_Init------------------------------------------------------------------------------
+    ;Initiliazing Debug Dump
+Debug_Init
+   	LDR R10, =data_capture
+	LDR R11, =time_capture;		Created pointers
+	PUSH {R0, R1}
+	PUSH {R2, R3}
+	MOV R0, #0x08;		8 bits in data_capture
+	MOV R1, #50;
+	
+setting_data_capture
+	SUB R1,R1, #0x01
+	MOV R2, #0xFF;
+	STR R2, [R10]
+	ADD R10, R10, R0
+	CMP R1, #0x0;
+	BNE setting_data_capture
+	
+	MOV R1, #50;
+	MOV	R2, #0x04;
+	MUL R0,R0, R2;
+setting_time_capture
+	MOV	R2, #0x01;
+	SUB R1,R1, R2;
+	MOV R2, #0xFF;
+	STR R2, [R10]
+	ADD R10, R10, R0
+	CMP R1, #0x0;
+	BNE setting_time_capture
+	
+	LDR R10, =data_capture
+	LDR R11,=time_capture
+	POP {R2, R3}
+	POP {R0, R1}
+	BX LR
+	
+;-------DEBUG_CAPTURE---------------------------------------------------------------------------
+;saves one data point
+Debug_Capture		
+   	PUSH {R0,R1}
+	LDR R0, =GPIO_PORTE_DATA_R
+	AND R0, R0, #0x03;		Capturing Pins E0 and E1
+	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
+	STR R0, [R10]
+	STR R1, [R11]
+	ADD R10, R10, #0x01
+	ADD R11, R11, #0x01
+	POP {R0,R1}
+	BX LR
+	
 ;-----------------------------------------------------------------------------------------------
     ALIGN      ; make sure the end of this section is aligned
     END        ; end of file
