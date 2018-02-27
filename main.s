@@ -69,6 +69,7 @@ delay_inc	 	  SPACE 4		; how to increment the delays when we need to change them
 delay_off		  SPACE 4		; how long the LED will stay off (in cycles)
 delay_on		  SPACE 4		; how long the LED will stay on (in cycles)
 prev_button_state SPACE	1		; captures whether a button has been released or pushed
+green_counter	  SPACE 1		; it counts everytime the main loop is run and toggles the blue LED after a certain time is met.
 
 ;Debuggin variables
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
@@ -147,14 +148,30 @@ Configure
 	LDR R1, =delay_on;
 	STR	R2, [R1];			Default: the delay_on on starts @ 1/5 of the MAX_DELAY
 	
+	LDR	R1, =green_counter;
+	MOV	R2, #0;
+	STRB R2, [R1];			Initially set the green_counter to 0
+	
     CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 
 main_loop  
 ; The main loop engine
-	LDR	R1, =GPIO_PORTF_DATA_R;
-	LDR	R2, [R1];
+;Check whether to toggle the green LED or not
+	LDR	R1, =green_counter;
+	LDRB R2, [R1];
+	ADD	R2, R2, #1;			green_counter++
+	STRB R2, [R1];
+	CMP	R2, #10;
+	BNE Breathe_status;		if(green_counter == 3) toggle Green LED
+	BL	Toggle_Green;
+	MOV	R2, #0;
+	STRB R2, [R1];
+	
 	
 ; If the button is pushed, Start breathing
+Breathe_status
+	LDR	R1, =GPIO_PORTF_DATA_R;
+	LDR	R2, [R1];
 	AND	R2, R2, #0x10;			Check whether the button has been pushed or not
 	CMP	R2, #0x00;
 	BNE	Blink_ifPushed;		If SW1 is pushed, start the breathing
@@ -341,7 +358,18 @@ Debug_Capture
 	ADD R10, R10, #0x01
 	ADD R11, R11, #0x01
 	POP {R0,R1}
-	BX LR
+	BX LR;
+
+;-------Toggle Green LED (PF2)------------------------------------------------------------------
+;Toggles the Green LED on and off (PF2)
+Toggle_Green
+	PUSH {R0, R1};
+	LDR	R0, =GPIO_PORTF_DATA_R;
+	LDR	R1, [R0];
+	EOR	R1, #0x04;
+	STR	R1, [R0];
+	POP {R0, R1};
+	BX LR;
 
 ;-----------------------------------------------------------------------------------------------
     ALIGN      ; make sure the end of this section is aligned
