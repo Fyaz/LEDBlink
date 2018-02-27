@@ -47,10 +47,11 @@ SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 MAX_DELAY		   EQU 0x1864A8		;0x249700	   ; The interval size of the delays
 BREATHE_DELAY_MAX  EQU 0x5E00					   ; The delay required
 
-     IMPORT  TExaS_Init
+     IMPORT TExaS_Init
 	 IMPORT SysTick_Init
      IMPORT SysTick_Wait
-     IMPORT SysTick_Wait10ms	 
+     IMPORT SysTick_Wait10ms
+	 IMPORT Debug_Init
 	 
      THUMB
 ;------------Global Variables-------------------------------------------------------------------
@@ -61,42 +62,17 @@ delay_inc	 	  SPACE 4		; how to increment the delays when we need to change them
 delay_off		  SPACE 4		; how long the LED will stay off (in cycles)
 delay_on		  SPACE 4		; how long the LED will stay on (in cycles)
 prev_button_state SPACE	1		; captures whether a button has been released or pushed
-		 
-	;Debuggin variables
-data_capture  	SPACE 50	; Array of 50 8-byte numbers
-time_capture	SPACE 200	; Array of 50 32-byte numbers
 
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
      EXPORT  Start
 
-;R10 = data_capture pointer
-;R11 = time_capture pointer
-
 ;---------Main Code-----------------------------------------------------------------------------
 Start
- ; SysTick_Init sets Systick for 12.5 ns
- ; disable SysTick during setup
-    LDR R1, =NVIC_ST_CTRL_R
-    MOV R0, #0            ; Clear Enable         
-    STR R0, [R1] 
-; set reload to maximum reload value
-    LDR R1, =NVIC_ST_RELOAD_R 
-    LDR R0, =0x00FFFFFF;    ; Specify RELOAD value
-    STR R0, [R1]            ; reload at maximum       
-; writing any value to CURRENT clears it
-    LDR R1, =NVIC_ST_CURRENT_R 
-    MOV R0, #0              
-    STR R0, [R1]            ; clear counter
-; enable SysTick with core clock
-    LDR R1, =NVIC_ST_CTRL_R    
-    MOV R0, #0x0005    ; Enable but no interrupts (later)
-    STR R0, [R1]       ; ENABLE and CLK_SRC bits set
-    BX  LR 
-	
  ; TExaS_Init sets bus clock at 80 MHz
     BL  TExaS_Init ; voltmeter, scope on PD3
-    ;BL  Debug_Init ;
+	BL 	SysTick_Init;
+    BL  Debug_Init ;
 	
  ; Port Initialization
 	LDR	R0, =SYSCTL_RCGCGPIO_R;
@@ -304,56 +280,7 @@ delayDone
 	POP {R0, R1};
 	BX LR;
 	
-;-------DEBUG_Init------------------------------------------------------------------------------
-    ;Initiliazing Debug Dump
-Debug_Init
-   	LDR R10, =data_capture
-	LDR R11, =time_capture;		Created pointers
-	PUSH {R0, R1}
-	PUSH {R2, R3}
-	MOV R0, #0x08;		8 bits in data_capture
-	MOV R1, #50;
-	
-setting_data_capture
-	SUB R1,R1, #0x01
-	MOV R2, #0xFF;
-	STR R2, [R10]
-	ADD R10, R10, R0
-	CMP R1, #0x0;
-	BNE setting_data_capture
-	
-	MOV R1, #50;
-	MOV	R2, #0x04;
-	MUL R0,R0, R2;
-setting_time_capture
-	MOV	R2, #0x01;
-	SUB R1,R1, R2;
-	MOV R2, #0xFF;
-	STR R2, [R10]
-	ADD R10, R10, R0
-	CMP R1, #0x0;
-	BNE setting_time_capture
-	
-	LDR R10, =data_capture
-	LDR R11,=time_capture
-	POP {R2, R3}
-	POP {R0, R1}
-	BX LR
-	
-;-------DEBUG_CAPTURE---------------------------------------------------------------------------
-;saves one data point
-Debug_Capture		
-   	PUSH {R0,R1}
-	LDR R0, =GPIO_PORTE_DATA_R
-	AND R0, R0, #0x03;		Capturing Pins E0 and E1
-	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
-	STR R0, [R10]
-	STR R1, [R11]
-	ADD R10, R10, #0x01
-	ADD R11, R11, #0x01
-	POP {R0,R1}
-	BX LR
-	
+
 ;-----------------------------------------------------------------------------------------------
     ALIGN      ; make sure the end of this section is aligned
     END        ; end of file
