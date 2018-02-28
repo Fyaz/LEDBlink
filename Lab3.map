@@ -7,9 +7,8 @@ Section Cross References
     startup.o(RESET) refers to startup.o(STACK) for StackMem
     startup.o(RESET) refers to texas.o(.text) for Timer4A_Handler
     startup.o(RESET) refers to main.o(.text) for Start
-    main.o(DATA) refers (Special) to systick.o(.text) for SysTick_Wait10ms
-    main.o(.text) refers (Special) to systick.o(.text) for SysTick_Wait10ms
     main.o(.text) refers to texas.o(.text) for TExaS_Init
+    main.o(.text) refers to systick.o(.text) for SysTick_Init
     main.o(.text) refers to main.o(DATA) for delay_inc
     texas.o(.text) refers to texas.o(.bss) for TExaS
     texas.o(.text) refers to texas.o(.constdata) for IntroMsg

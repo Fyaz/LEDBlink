@@ -59,7 +59,6 @@ BREATHE_DELAY_MAX  EQU 0x5E00					   ; The delay required
 
      IMPORT TExaS_Init
 	 IMPORT SysTick_Init
-     IMPORT SysTick_Wait10ms
 	 
      THUMB
 ;------------Global Variables-------------------------------------------------------------------
@@ -85,8 +84,8 @@ NEntries 	SPACE 1		; Number of entries in either array
 Start
  ; TExaS_Init sets bus clock at 80 MHz
     BL  TExaS_Init ; voltmeter, scope on PD3
-	BL 	SysTick_Init;	Initializes the SysTick
     BL  Debug_Init ;	Initializes the Debugging Tools
+	BL 	SysTick_Init;	Initializes the SysTick
 	
  ; Port Initialization
 	LDR	R0, =SYSCTL_RCGCGPIO_R;
