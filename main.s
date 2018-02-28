@@ -316,7 +316,7 @@ Debug_Init
    	LDR R10, =data_capture
 	LDR R11, =time_capture;		Created pointers
 
-PUSH {R0, R1}
+	PUSH {R0, R1}
 	PUSH {R2, R3}
 	MOV R0, #0x08;		8 bits in data_capture
 	MOV R1, #50;
@@ -324,7 +324,7 @@ PUSH {R0, R1}
 setting_data_capture
 	SUB R1,R1, #0x01
 	MOV R2, #0xFF;
-	STRb R2, [R10]
+	STRB R2, [R10]
 	ADD R10, R10, R0
 	CMP R1, #0x0;
 	BNE setting_data_capture
@@ -362,7 +362,7 @@ Debug_Capture
 	AND R1,R1,#0x01;
 	AND R0,R0,R1;
 	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
-	STRb R0, [R10]			Finished Storing Data
+	STRB R0, [R10];			Finished Storing Data
 	
 	
 	
