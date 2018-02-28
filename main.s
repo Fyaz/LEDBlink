@@ -315,7 +315,8 @@ delayDone
 Debug_Init
    	LDR R10, =data_capture
 	LDR R11, =time_capture;		Created pointers
-	PUSH {R0, R1}
+
+PUSH {R0, R1}
 	PUSH {R2, R3}
 	MOV R0, #0x08;		8 bits in data_capture
 	MOV R1, #50;
@@ -362,9 +363,12 @@ Debug_Capture
 	AND R0,R0,R1;
 	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
 	STRb R0, [R10]			Finished Storing Data
+	
+	
+	
 	STR R1, [R11]
 	ADD R10, R10, #0x01
-	ADD R11, R11, #0x01
+	ADD R11, R11, #0x04
 	LDR R0, =NEntries
 	LDR R1, [R0]
 	ADD R1,R1, #0x01
