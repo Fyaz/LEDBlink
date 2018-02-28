@@ -343,7 +343,8 @@ Debug_Capture
 	LDR R0 , =NEntries
 	LDR R0, [R0]
 	CMP R0 , #50
-	BEQ DONE_C
+	BEQ SAVER
+	BHI DONE_C
 	LDR R0, =GPIO_PORTE_DATA_R
 	AND R0, R0, #0x02;		Capturing Pins E0 and E1
 	LSR R0, R0, #0x03;
@@ -357,12 +358,17 @@ Debug_Capture
 	ADD R10, R10, #0x01
 	ADD R11, R11, #0x04
 	LDR R0, =NEntries
-	LDR R1, [R0]
+	LDR R1, [R0]			incrementing NEntries
 	ADD R1,R1, #0x01
 	STR R1, [R0]
 	
 DONE_C	POP {R0,R1}
 	BX LR;
+SAVER	ADD R0,R0, #0x01
+	LDR R1, =NEntries
+	STR R0, [R1]
+	SAVE data.txt [R10], [R11]
+	B DONE_C
 
 ;-------Toggle Green LED (PF2)------------------------------------------------------------------
 ;Toggles the Green LED on and off (PF2)
