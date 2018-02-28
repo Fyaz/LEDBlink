@@ -1,32 +1,24 @@
 ;****************** main.s ***************
 ; Program written by: Faiyaz Mostofa & Zaine
 ; Date Created: 2/4/2017
-; Last Modified: 2/14/2018
-; Brief description of the program
-;   The LED toggles at 8 Hz and a varying duty-cycle
+; Last Modified: 2/28/2018
+; Brief description of the program:
+;   A collection of operations are done in this program (at once):
+;	- A Green LED blinks repeatedly indicating that the program is running
+;	- A Red LED blinks on and off based on different patterns which can be changed by a switch (8Hz).
+;	  The LED will cycle through different patterns as specified below:
+;	    :on for (1/40s) -> on for (1/20s) -> on for (3/40s) -> on for (1/10s) -> always on -> always off -> loop:
+;	  The delays for the blinking is handled by SysTick.s
+;	- The Red LED also has a breathing function can be activated by holding the internal button @ PF4 on the micro-controller.
+;	  The delays for the breathing is handled by the delay function @ the end of this file.
+;   - A debugging capture tool that runs 3rd time the loop finishes.
 ; Hardware connections (External: One button and one LED)
 ;  PE1 is Button input  (1 means pressed, 0 means not pressed)
-;  PE0 is LED output (1 activates external LED on protoboard)
+;  PE0 is a Red LED output (1 activates external LED on protoboard)
+;  PF2 is a Green LED output (1 activates external LED on protoboard)
 ;  PF4 is builtin button SW1 on Launchpad (Internal)
 ;        Negative Logic (0 means pressed, 1 means not pressed)
-; Overall functionality of this system is to operate like this
-;   1) Make PE0 an output and make PE1 and PF4 inputs.
-;   2) The system starts with the the LED toggling at 8Hz,
-;      which is 8 times per second with a duty-cycle of 20%.
-;      Therefore, the LED is ON for (0.2*1/8)th of a second
-;      and OFF for (0.8*1/8)th of a second.
-;   3) When the button on (PE1) is pressed-and-released increase
-;      the duty cycle by 20% (modulo 100%). Therefore for each
-;      press-and-release the duty cycle changes from 20% to 40% to 60%
-;      to 80% to 100%(ON) to 0%(Off) to 20% to 40% so on
-;   4) Implement a "breathing LED" when SW1 (PF4) on the Launchpad is pressed:
-;      a) Be creative and play around with what "breathing" means.
-;         An example of "breathing" is most computers power LED in sleep mode
-;         (e.g., https://www.youtube.com/watch?v=ZT6siXyIjvQ).
-;      b) When (PF4) is released while in breathing mode, resume blinking at 8Hz.
-;         The duty cycle can either match the most recent duty-
-;         cycle or reset to 20%.
-;      TIP: debugging the breathing LED algorithm and feel on the simulator is impossible.
+
 ; PortE device registers
 GPIO_PORTE_DATA_R  EQU 0x400243FC
 GPIO_PORTE_DIR_R   EQU 0x40024400
@@ -73,7 +65,7 @@ delay_on		  SPACE 4	; how long the LED will stay on (in cycles)
 prev_button_state SPACE	1	; captures whether a button has been released or pushed
 green_counter	  SPACE 1	; it counts everytime the main loop is run and toggles the blue LED after a certain time is met.
 	
-;Debuggin variables
+	;Debuggin variables
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
 time_capture	SPACE 200	; Array of 50 32-byte numbers
 debug_capture_counter	SPACE	1	; it counts everytime the main loop is run and captures debugging data after a certain amount of loops
@@ -83,15 +75,13 @@ NEntries 		SPACE 1		; Number of entries in either array
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
      EXPORT  Start
-
-;R10 = data_capture pointer
-;R11 = time_capture pointer
+		 
 ;---------Main Code-----------------------------------------------------------------------------
 Start
  ; TExaS_Init sets bus clock at 80 MHz
     BL  TExaS_Init ; voltmeter, scope on PD3
     BL  Debug_Init ;	Initializes the Debugging Tools
-	BL 	SysTick_Init;	Initializes the SysTick
+	BL 	SysTick_Init;	Initializes the SysTick (method in SysTick.s)
 	BL	Ports_Init;		Initializes Ports E,F
 						; PE0 = Red LED output
 						; PE1 = positive logic Input (Switch)
@@ -211,7 +201,7 @@ Breathe_loop
 	LDR	R1, [R9];				<- R1 holds the data from the data register
 Breathe_ifPushed	
 	AND	R3, R1, #0x10;			Check whether the button has been pushed or not
-	CMP	R3, #0x10;				; Keep Breathing until the button is released.
+	CMP	R3, #0x10;				Keep Breathing until the button is released.
 	BNE	Breathe_incrementDuty;
 	B Breathe_Stop;
 	
@@ -264,13 +254,13 @@ Check_Debug
 	STRB R2, [R1];
 	CMP	R2, #3;
 	BNE	Check_Debug_Leave;
-	BL	Debug_Capture;
+	BL	Debug_Capture;		if(debug_capture_counter == 3) capture data
 	MOV	R2, #0;
 	STRB R2, [R1];
 Check_Debug_Leave
 	POP	{R2, LR};
 	POP {R0, R1};
-	BX LR;					if(debug_capture_counter == 3) capture data
+	BX LR;					
 	
 ;-------CHECK_Green-----------------------------------------------------------------------------
 ; Wait 5 duty cycles, then save the points in the Dubugging arrays
@@ -282,8 +272,8 @@ Check_Green
 	ADD	R2, R2, #1;			green_counter++
 	STRB R2, [R1];
 	CMP	R2, #3;
-	BNE	Check_Green_Leave;	if(green_counter == 3) toggle Green LED
-	BL	Toggle_Green;
+	BNE	Check_Green_Leave;	
+	BL	Toggle_Green;		if(green_counter == 3) toggle Green LED
 	MOV	R2, #0;
 	STRB R2, [R1];
 Check_Green_Leave
@@ -300,7 +290,7 @@ Check_Breathe
 	LDR	R2, [R1];
 	AND	R2, R2, #0x10;			Check whether the button has been pushed or not
 	CMP	R2, #0x00;
-	BNE	Check_Breathe_Leave;		If SW1 is pushed, start the breathing
+	BNE	Check_Breathe_Leave;	If SW1 is pushed, start the breathing
 	BL Breathe_Start;
 Check_Breathe_Leave
 	POP	{R2, LR};
@@ -309,6 +299,8 @@ Check_Breathe_Leave
 	
 ;-------DEBUG_Init------------------------------------------------------------------------------
     ;Initiliazing Debug Dump
+	;R10 = data_capture pointer
+	;R11 = time_capture pointer
 Debug_Init
    	LDR R10, =data_capture
 	LDR R11, =time_capture;		Created pointers
@@ -320,7 +312,7 @@ Debug_Init
 	
 setting_data_capture
 	SUB R1,R1, #0x01
-	MOV R2, #0xFF;
+	MOV R2, #0xFF;		; Fill the data array with 0xFF (signifying empty)
 	STRB R2, [R10]
 	ADD R10, R10, R0
 	CMP R1, #0x0;
@@ -332,7 +324,7 @@ setting_data_capture
 setting_time_capture
 	MOV	R2, #0x01;
 	SUB R1,R1, R2;
-	MOV R2, #0xFFFFFFFF;
+	MOV R2, #0xFFFFFFFF; ; Fill the time array with 0xFFFFFFFF (signifying empty)
 	STR R2, [R10]
 	ADD R10, R10, R0
 	CMP R1, #0x0;
@@ -389,7 +381,7 @@ delay
 	PUSH {R0, R1};
 	MOV	R1, #0;
 delayLoop
-	CMP	R0, R1;			Loop until temporary value R1 reaches R0
+	CMP	R0, R1;			Loop until temporary value, R1, reaches R0
 	BEQ	delayDone;
 	ADD	R1, R1, #1;	
 	B	delayLoop;
