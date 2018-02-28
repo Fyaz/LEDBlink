@@ -54,13 +54,13 @@ NVIC_ST_CTRL_ENABLE   EQU 0x00000001  ; Counter mode
 NVIC_ST_RELOAD_M      EQU 0x00FFFFFF  ; Counter load value
 
 ;Variables that hold the maximum values 
-MAX_DELAY		   EQU 0x7D		  ;	0x1864A8 
-								  ; The interval size of the delays
+MAX_DELAY		   EQU 0x0C		  ; The interval size of the delays (in 10ms)
+								  ;	0x1864A8 (in cycles)
 BREATHE_DELAY_MAX  EQU 0x5E00	  ; The delay required
 
      IMPORT TExaS_Init
 	 IMPORT SysTick_Init
-	 IMPORT SysTick_Wait
+	 IMPORT SysTick_Wait10ms
 	 
      THUMB
 ;------------Global Variables-------------------------------------------------------------------
@@ -92,47 +92,12 @@ Start
     BL  TExaS_Init ; voltmeter, scope on PD3
     BL  Debug_Init ;	Initializes the Debugging Tools
 	BL 	SysTick_Init;	Initializes the SysTick
-	
- ; Port Initialization
-	LDR	R0, =SYSCTL_RCGCGPIO_R;
-	LDR	R1, [R0];
-	ORR	R1, R1, #0x30;			Start up Port F and Port E
-	STR	R1, [R0];
-	NOP;
-	NOP;
- ; Configure Port E
-	LDR	R0, =GPIO_PORTE_DIR_R;
-	LDR	R1, [R0];
-	ORR	R1, R1, #0x01;				PE0 is set to output (LED)
-	BIC	R1, R1, #0x12;				PE1,4 are set to input (buttons)
-	STR	R1, [R0];
-	LDR	R0, =GPIO_PORTE_AFSEL_R;
-	LDR	R1, [R0];
-	MOV	R1, #0;						Disables the "alternate functions" in the port
-	STR	R1,	[R0];
-	LDR	R0, =GPIO_PORTE_DEN_R;
-	LDR	R1, [R0];
-	MOV	R1, #0xFF;					1 means enable digital I/O
-	STR	R1, [R0];
-; Configure Port F
-	LDR R1, =GPIO_PORTF_LOCK_R; 	2) unlock the lock register
-	LDR R0, =GPIO_LOCK_KEY;			unlock GPIO Port F Commit Register
-	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_CR_R;   	enable commit for Port F
-	MOV R0, #0xFF;              	1 means allow access
-	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_DIR_R;  	5) set direction register
-	MOV R0,#0x0E;
-	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_AFSEL_R;	6) regular port function
-	MOV R0, #0;                   	0 means disable alternate function
-	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_PUR_R;    	pull-up resistors for PF4,PF0
-	MOV R0, #0x11;                	1)enable for negative logic
-	STR R0, [R1];
-	LDR R1, =GPIO_PORTF_DEN_R;    	7) enable Port F digital port
-	MOV R0, #0xFF;                	1 means enable digital I/O
-	STR R0, [R1];
+	BL	Ports_Init;		Initializes Ports E,F
+						; PE0 = Red LED output
+						; PE1 = positive logic Input (Switch)
+						; PF2 = Green LED output
+						; PF4 = Hold switch for breathing functionality
+						
 ; Setting up variables
 Configure
 	LDR	R1, =MAX_DELAY;		
@@ -215,7 +180,7 @@ Blink
 	STR	R2, [R1];
 	LDR R2, =delay_off;
 	LDR R0, [R2];
-	BL	SysTick_Wait	;BL	delay;			Delay the program for a amount of time specified in R0
+	BL	SysTick_Wait10ms	;BL	delay;	Delay the program for a amount of time specified in R0
 ; Turn on the light and wait
 	LDR	R1, =GPIO_PORTE_DATA_R;
 	LDR	R2, [R1];
@@ -223,7 +188,7 @@ Blink
 	STR	R2, [R1];
 	LDR R2, =delay_on;
 	LDR R0, [R2];
-	BL	SysTick_Wait	;BL	delay
+	BL	SysTick_Wait10ms	;BL	delay
 	
     B   main_loop
 ;-----------------------------------------------------------------------------------------------
@@ -431,7 +396,54 @@ delayLoop
 delayDone
 	POP {R0, R1};
 	BX LR;
-
+	
+;-----------------------------------------------------------------------------------------------
+; Port Initialization
+Ports_Init
+	PUSH {R0, R1};
+	PUSH {R2, LR};
+	LDR	R0, =SYSCTL_RCGCGPIO_R;
+	LDR	R1, [R0];
+	ORR	R1, R1, #0x30;			Start up Port F and Port E
+	STR	R1, [R0];
+	NOP;
+	NOP;
+ ; Configure Port E
+	LDR	R0, =GPIO_PORTE_DIR_R;
+	LDR	R1, [R0];
+	ORR	R1, R1, #0x01;				PE0 is set to output (LED)
+	BIC	R1, R1, #0x12;				PE1,4 are set to input (buttons)
+	STR	R1, [R0];
+	LDR	R0, =GPIO_PORTE_AFSEL_R;
+	LDR	R1, [R0];
+	MOV	R1, #0;						Disables the "alternate functions" in the port
+	STR	R1,	[R0];
+	LDR	R0, =GPIO_PORTE_DEN_R;
+	LDR	R1, [R0];
+	MOV	R1, #0xFF;					1 means enable digital I/O
+	STR	R1, [R0];
+; Configure Port F
+	LDR R1, =GPIO_PORTF_LOCK_R; 	2) unlock the lock register
+	LDR R0, =GPIO_LOCK_KEY;			unlock GPIO Port F Commit Register
+	STR R0, [R1];
+	LDR R1, =GPIO_PORTF_CR_R;   	enable commit for Port F
+	MOV R0, #0xFF;              	1 means allow access
+	STR R0, [R1];
+	LDR R1, =GPIO_PORTF_DIR_R;  	5) set direction register
+	MOV R0,#0x0E;
+	STR R0, [R1];
+	LDR R1, =GPIO_PORTF_AFSEL_R;	6) regular port function
+	MOV R0, #0;                   	0 means disable alternate function
+	STR R0, [R1];
+	LDR R1, =GPIO_PORTF_PUR_R;    	pull-up resistors for PF4,PF0
+	MOV R0, #0x11;                	1)enable for negative logic
+	STR R0, [R1];
+	LDR R1, =GPIO_PORTF_DEN_R;    	7) enable Port F digital port
+	MOV R0, #0xFF;                	1 means enable digital I/O
+	STR R0, [R1];
+	POP  {R2, LR};
+	POP	 {R0, R1};
+	BX LR;
 ;-----------------------------------------------------------------------------------------------
     ALIGN      ; make sure the end of this section is aligned
     END        ; end of file
