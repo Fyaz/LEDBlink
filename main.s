@@ -54,11 +54,13 @@ NVIC_ST_CTRL_ENABLE   EQU 0x00000001  ; Counter mode
 NVIC_ST_RELOAD_M      EQU 0x00FFFFFF  ; Counter load value
 
 ;Variables that hold the maximum values 
-MAX_DELAY		   EQU 0x1864A8		;0x249700	   ; The interval size of the delays
-BREATHE_DELAY_MAX  EQU 0x5E00					   ; The delay required
+MAX_DELAY		   EQU 0x7D		  ;	0x1864A8 
+								  ; The interval size of the delays
+BREATHE_DELAY_MAX  EQU 0x5E00	  ; The delay required
 
      IMPORT TExaS_Init
 	 IMPORT SysTick_Init
+	 IMPORT SysTick_Wait
 	 
      THUMB
 ;------------Global Variables-------------------------------------------------------------------
@@ -213,14 +215,15 @@ Blink
 	STR	R2, [R1];
 	LDR R2, =delay_off;
 	LDR R0, [R2];
-	BL	delay;			Delay the program for a amount of time specified in R7
+	BL	SysTick_Wait	;BL	delay;			Delay the program for a amount of time specified in R0
 ; Turn on the light and wait
+	LDR	R1, =GPIO_PORTE_DATA_R;
 	LDR	R2, [R1];
 	ORR	R2, #0x01;		
 	STR	R2, [R1];
 	LDR R2, =delay_on;
 	LDR R0, [R2];
-	BL	delay;
+	BL	SysTick_Wait	;BL	delay
 	
     B   main_loop
 ;-----------------------------------------------------------------------------------------------

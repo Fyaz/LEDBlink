@@ -189,17 +189,16 @@ ARM Macro Assembler    Page 3
                                                             value of R4 and LR
   105 00000048 4770            BX               LR          ; return
   106 0000004A         
-  107 0000004A         
-  108 0000004A 00 00           ALIGN                        ; make sure the end
+  107 0000004A 00 00           ALIGN                        ; make sure the end
                                                              of this section is
                                                              aligned
+  108 0000004C                 END                          ; end of file
 
 
 
 ARM Macro Assembler    Page 4 
 
 
-  109 0000004C                 END                          ; end of file
               E000E010 
               E000E014 
               00FFFFFF 
