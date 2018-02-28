@@ -323,7 +323,7 @@ Debug_Init
 setting_data_capture
 	SUB R1,R1, #0x01
 	MOV R2, #0xFF;
-	STR R2, [R10]
+	STRb R2, [R10]
 	ADD R10, R10, R0
 	CMP R1, #0x0;
 	BNE setting_data_capture
@@ -334,7 +334,7 @@ setting_data_capture
 setting_time_capture
 	MOV	R2, #0x01;
 	SUB R1,R1, R2;
-	MOV R2, #0xFF;
+	MOV R2, #0xFFFFFFFF;
 	STR R2, [R10]
 	ADD R10, R10, R0
 	CMP R1, #0x0;
@@ -351,6 +351,7 @@ setting_time_capture
 Debug_Capture		
    	PUSH {R0,R1}
 	LDR R0 , =NEntries
+	LDR R0, [R0]
 	CMP R0 , #50
 	BEQ DONE_C
 	LDR R0, =GPIO_PORTE_DATA_R
@@ -360,10 +361,15 @@ Debug_Capture
 	AND R1,R1,#0x01;
 	AND R0,R0,R1;
 	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
-	STR R0, [R10]
+	STRb R0, [R10]			Finished Storing Data
 	STR R1, [R11]
 	ADD R10, R10, #0x01
 	ADD R11, R11, #0x01
+	LDR R0, =NEntries
+	LDR R1, [R0]
+	ADD R1,R1, #0x01
+	STR R1, [R0]
+	
 DONE_C	POP {R0,R1}
 	BX LR;
 
