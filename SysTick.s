@@ -104,6 +104,5 @@ SysTick_Wait10ms_done
     POP {R4, LR}                    ; restore previous value of R4 and LR
     BX  LR                          ; return
 
-
     ALIGN                           ; make sure the end of this section is aligned
     END                             ; end of file

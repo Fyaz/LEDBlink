@@ -1,5 +1,5 @@
 ;****************** main.s ***************
-; Program written by: Faiyaz Mostofa
+; Program written by: Faiyaz Mostofa & Zaine
 ; Date Created: 2/4/2017
 ; Last Modified: 2/14/2018
 ; Brief description of the program
@@ -42,7 +42,7 @@ GPIO_PORTF_LOCK_R  EQU 0x40025520
 GPIO_PORTF_CR_R    EQU 0x40025524
 GPIO_LOCK_KEY      EQU 0x4C4F434B  	; Unlocks the GPIO_CR register
 SYSCTL_RCGCGPIO_R  EQU 0x400FE608
-;System Clock reigsters
+; System Clock reigsters
 NVIC_ST_CTRL_R        EQU 0xE000E010
 NVIC_ST_RELOAD_R      EQU 0xE000E014
 NVIC_ST_CURRENT_R     EQU 0xE000E018
@@ -65,15 +65,19 @@ BREATHE_DELAY_MAX  EQU 0x5E00					   ; The delay required
      AREA    DATA, ALIGN=2
      
 	;Blinking variables
-delay_inc	 	  SPACE 4		; how to increment the delays when we need to change them (1/5 of MAX_DELAY)
-delay_off		  SPACE 4		; how long the LED will stay off (in cycles)
-delay_on		  SPACE 4		; how long the LED will stay on (in cycles)
-prev_button_state SPACE	1		; captures whether a button has been released or pushed
-green_counter	  SPACE 1		; it counts everytime the main loop is run and toggles the blue LED after a certain time is met.
+delay_inc	 	  SPACE 4	; how to increment the delays when we need to change them (1/5 of MAX_DELAY)
+delay_off		  SPACE 4	; how long the LED will stay off (in cycles)
+delay_on		  SPACE 4	; how long the LED will stay on (in cycles)
+prev_button_state SPACE	1	; captures whether a button has been released or pushed
+green_counter	  SPACE 1	; it counts everytime the main loop is run and toggles the blue LED after a certain time is met.
+	
 ;Debuggin variables
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
 time_capture	SPACE 200	; Array of 50 32-byte numbers
-NEntries 	SPACE 1		; Number of entries in either array	
+debug_capture_counter	SPACE	1	; it counts everytime the main loop is run and captures debugging data after a certain amount of loops
+	
+NEntries 		SPACE 1		; Number of entries in either array	
+	
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
      EXPORT  Start
@@ -150,32 +154,20 @@ Configure
 	LDR	R1, =green_counter;
 	MOV	R2, #0;
 	STRB R2, [R1];			Initially set the green_counter to 0
+	LDR	R1, =debug_capture_counter;
+	MOV	R2, #0;
+	STRB R2, [R1];			Initially set the debug_counter to 0
 	
     CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 
-main_loop  
 ; The main loop engine
-;Check whether to toggle the green LED or not
-	LDR	R1, =green_counter;
-	LDRB R2, [R1];
-	ADD	R2, R2, #1;			green_counter++
-	STRB R2, [R1];
-	CMP	R2, #10;
-	BNE Breathe_status;		if(green_counter == 3) toggle Green LED
-	BL	Toggle_Green;
-	MOV	R2, #0;
-	STRB R2, [R1];
-	
-	
-; If the button is pushed, Start breathing
-Breathe_status
-	LDR	R1, =GPIO_PORTF_DATA_R;
-	LDR	R2, [R1];
-	AND	R2, R2, #0x10;			Check whether the button has been pushed or not
-	CMP	R2, #0x00;
-	BNE	Blink_ifPushed;		If SW1 is pushed, start the breathing
-	BL Breathe_Start;
-	
+main_loop  
+
+	BL	Check_Debug;	; Check if we need to record debugging statistics
+	BL	Check_Green		; Check whether to toggle the green LED on or not
+	BL	Check_Breathe	; Check if whether we need to make the LED Breathe
+
+;If a button @ PE1 is pushed, increment the blinking pattern
 Blink_ifPushed
 	LDR	R1, =GPIO_PORTE_DATA_R;
 	LDR R2, =prev_button_state;
@@ -202,7 +194,7 @@ Blink_incrementDuty
 	LDR	R3, [R1];
 	ADD	R3, R3, R2;				Increment the on time
 	STR R3, [R1];
-	
+;Check if the duty time needs to be reset (always on -> always off)
 	LDR	R1, =delay_off;
 	LDR	R2, [R1];
 	CMP	R2, #0;
@@ -213,7 +205,6 @@ Blink_incrementDuty
 	LDR	R1, =delay_on;
 	MOV	R2, #0;					Reset the on time to 0 (light is always off)
 	STR	R2, [R1];
-	
 Blink
 ; Turn off the light and wait
 	LDR	R1, =GPIO_PORTE_DATA_R;
@@ -245,16 +236,14 @@ Breathe_Start
 	MOV	R3, #500;
 	UDIV R4, R2, R3;			The increments of the delay
 	ADD	R5, R2, #0;				Default: off for 4/5 of 80Hz
-	MOV	R6, #0;				Default: on for 1/5 of 80Hz
+	MOV	R6, #0;					Default: on for 1/5 of 80Hz
 	ADD	R7, R2, #0;
 	
 Breathe_loop  
-; The main loop engine
 	LDR	R1, [R9];				<- R1 holds the data from the data register
 Breathe_ifPushed	
-; If the button is pushed, Stop breathing
 	AND	R3, R1, #0x10;			Check whether the button has been pushed or not
-	CMP	R3, #0x10;
+	CMP	R3, #0x10;				; Keep Breathing until the button is released.
 	BNE	Breathe_incrementDuty;
 	B Breathe_Stop;
 	
@@ -264,7 +253,7 @@ Breathe_incrementDuty
 	ADD	R6, R6, R4;				Increment the on time
 	CMP	R5, #0;
 	BMI Breathe_Verse;
-	BEQ Breathe_Verse;					Check if we've stopped or froze the delay of the light (either R5 or R6 reach zero)
+	BEQ Breathe_Verse;			Check if we've stopped or froze the delay of the light (either R5 or R6 reach zero)
 	CMP	R6, #0;
 	BPL Breathe;
 Breathe_Verse
@@ -295,19 +284,60 @@ Breathe_Stop
 	POP {R0-R7};
 
 	BX LR;
-;-----------------------------------------------------------------------------------------------
-delay
-; a subroutine that loops using the value at R0
+	
+;-------CHECK_debug-----------------------------------------------------------------------------
+; Wait 5 duty cycles, then save the points in the Dubugging arrays
+Check_Debug
 	PUSH {R0, R1};
-	MOV	R1, #0;
-delayLoop
-	CMP	R0, R1;			Loop until temporary value R1 reaches R0
-	BEQ	delayDone;
-	ADD	R1, R1, #1;	
-	B	delayLoop;
-delayDone
+	PUSH {R2, LR};
+	LDR	R1, =debug_capture_counter;
+	LDRB R2, [R1];	
+	ADD	R2, R2, #1;			debug_capture_counter++;
+	STRB R2, [R1];
+	CMP	R2, #3;
+	BNE	Check_Debug_Leave;
+	BL	Debug_Capture;
+	MOV	R2, #0;
+	STRB R2, [R1];
+Check_Debug_Leave
+	POP	{R2, LR};
 	POP {R0, R1};
-	BX LR;
+	BX LR;					if(debug_capture_counter == 3) capture data
+	
+;-------CHECK_Green-----------------------------------------------------------------------------
+; Wait 5 duty cycles, then save the points in the Dubugging arrays
+Check_Green
+	PUSH {R0, R1};
+	PUSH {R2, LR};
+	LDR	R1, =green_counter;
+	LDRB R2, [R1];
+	ADD	R2, R2, #1;			green_counter++
+	STRB R2, [R1];
+	CMP	R2, #3;
+	BNE	Check_Green_Leave;	if(green_counter == 3) toggle Green LED
+	BL	Toggle_Green;
+	MOV	R2, #0;
+	STRB R2, [R1];
+Check_Green_Leave
+	POP	{R2, LR};
+	POP {R0, R1};
+	BX LR;		
+
+;-------CHECK_Breathe-----------------------------------------------------------------------------
+; If the button @ PF4 is pushed, Start breathing
+Check_Breathe
+	PUSH {R0, R1};
+	PUSH {R2, LR};
+	LDR	R1, =GPIO_PORTF_DATA_R;
+	LDR	R2, [R1];
+	AND	R2, R2, #0x10;			Check whether the button has been pushed or not
+	CMP	R2, #0x00;
+	BNE	Check_Breathe_Leave;		If SW1 is pushed, start the breathing
+	BL Breathe_Start;
+Check_Breathe_Leave
+	POP	{R2, LR};
+	POP {R0, R1};
+	BX	LR;
 	
 ;-------DEBUG_Init------------------------------------------------------------------------------
     ;Initiliazing Debug Dump
@@ -363,8 +393,6 @@ Debug_Capture
 	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
 	STRB R0, [R10];			Finished Storing Data
 	
-	
-	
 	STR R1, [R11]
 	ADD R10, R10, #0x01
 	ADD R11, R11, #0x04
@@ -384,6 +412,20 @@ Toggle_Green
 	LDR	R1, [R0];
 	EOR	R1, #0x04;
 	STR	R1, [R0];
+	POP {R0, R1};
+	BX LR;
+	
+;-----------------------------------------------------------------------------------------------
+delay
+; a subroutine that loops using the value at R0
+	PUSH {R0, R1};
+	MOV	R1, #0;
+delayLoop
+	CMP	R0, R1;			Loop until temporary value R1 reaches R0
+	BEQ	delayDone;
+	ADD	R1, R1, #1;	
+	B	delayLoop;
+delayDone
 	POP {R0, R1};
 	BX LR;
 
