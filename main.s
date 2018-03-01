@@ -59,10 +59,14 @@ green_counter	  SPACE 1	; it counts everytime the main loop is run and toggles t
 	
 	;Debuggin variables
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
+							; 0x2000003e
+							; 0x20000090
 time_capture	SPACE 200	; Array of 50 32-byte numbers
+							; 0x20000070
+							; 0x20000138
 debug_capture_counter	SPACE	1	; it counts everytime the main loop is run and captures debugging data after a certain amount of loops
 	
-NEntries 		SPACE 1		; Number of entries in either array	
+NEntries 		SPACE 1		; Number of entries in either array
 	
      AREA    |.text|, CODE, READONLY, ALIGN=2
      THUMB
@@ -112,7 +116,7 @@ Configure
 ; The main loop engine
 main_loop  
 
-	BL	Check_Debug;	; Check if we need to record debugging statistics
+	;BL	Check_Debug;	; Check if we need to record debugging statistics
 	BL	Check_Green		; Check whether to toggle the green LED on or not
 	BL	Check_Breathe	; Check if whether we need to make the LED Breathe
 
@@ -125,9 +129,9 @@ Blink_ifPushed
 	AND	R3, R3, #0x02;			Check whether the button has been pushed or not
 	CMP R3, R2;					<- Check if the button is in the same state as before 
 	BEQ Blink;
+	BL	Debug_Capture;
 	LDR	R2, =prev_button_state;
 	STRB R3, [R2];
-	;BL	Debug_Capture;
 ; If the button is pushed, set PE4 to 1
 	CMP	R3, #0x00;			If the button is pushed
 	BNE	Blink_incrementDuty;
@@ -298,6 +302,8 @@ Debug_Init
 	
 	LDR R2, =data_capture;
 	LDR R3, =time_capture;		Created pointers
+	LDR R10, =data_capture;
+	LDR	R11, =time_capture;
 ; Fill the data array with 0xFF (signifying empty)	
 	MOV R0, #50;
 setting_data_capture
@@ -316,6 +322,10 @@ setting_time_capture
 	ADD R3, R3, #4;
 	CMP R0, #0x0;
 	BNE setting_time_capture
+RestNEntries
+	LDR	R0, =NEntries;
+	MOV	R2, #0;
+	STRB R2, [R0];
 	
 	POP {R2, R3}
 	POP {R0, R1}
