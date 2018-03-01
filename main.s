@@ -307,7 +307,7 @@ Debug_Init
 
 	PUSH {R0, R1}
 	PUSH {R2, R3}
-	MOV R0, #0x08;		8 bits in data_capture
+	MOV R0, #0x01;		8 bits in data_capture
 	MOV R1, #50;
 	
 setting_data_capture
