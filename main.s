@@ -1,5 +1,5 @@
 ;****************** main.s ***************
-; Program written by: Faiyaz Mostofa & Zaine
+; Program written by: Faiyaz Mostofa & Zain Ahmed
 ; Date Created: 2/4/2017
 ; Last Modified: 2/28/2018
 ; Brief description of the program:
@@ -18,6 +18,7 @@
 ;  PF2 is a Green LED output (1 activates external LED on protoboard)
 ;  PF4 is builtin button SW1 on Launchpad (Internal)
 ;        Negative Logic (0 means pressed, 1 means not pressed)
+;  Main Loop takes 925 cycles before debug_capture takes 22 cycles, for mere 2.3% intrusiveness
 
 ; PortE device registers
 GPIO_PORTE_DATA_R  EQU 0x400243FC
