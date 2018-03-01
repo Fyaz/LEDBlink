@@ -57,7 +57,7 @@ delay_on		  SPACE 4	; how long the LED will stay on (in cycles)
 prev_button_state SPACE	1	; captures whether a button has been released or pushed
 green_counter	  SPACE 1	; it counts everytime the main loop is run and toggles the blue LED after a certain time is met.
 	
-	;Debuggin variables
+	;Debugging arrays
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
 							; 0x2000003e
 							; 0x20000090
@@ -110,6 +110,8 @@ Configure
 	LDR	R1, =debug_capture_counter;
 	MOV	R2, #0;
 	STRB R2, [R1];			Initially set the debug_counter to 0
+	
+	MOV R9, #0;
 	
     CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 
@@ -299,12 +301,11 @@ Check_Breathe_Leave
 Debug_Init
 	PUSH {R0, R1}
 	PUSH {R2, R3}
-	
 	LDR R2, =data_capture;
 	LDR R3, =time_capture;		Created pointers
 	LDR R10, =data_capture;
 	LDR	R11, =time_capture;
-; Fill the data array with 0xFF (signifying empty)	
+; Fill the data array with 0xFF (signifying empty)
 	MOV R0, #50;
 setting_data_capture
 	SUB R0,R0, #0x01
@@ -337,11 +338,13 @@ Debug_Capture
    	PUSH {R0,R1}
 	PUSH {R2,LR}
 	LDR R0 , =NEntries
-	LDR R1, [R0]
+	LDRB R1, [R0]
 	CMP R1 , #50
 	BHS DONE_C;			if (the array is not full)
 	ADD	R1, R1, #1;			Add a new entry
 	STRB R1, [R0];			NEntries++;
+	ADD	R9, R9, #1;
+	
 ; Record the current data entries
 	LDR R0, =GPIO_PORTE_DATA_R;	
 	LDR	R0, [R0];
