@@ -92,7 +92,7 @@ ARM Macro Assembler    Page 2
                        NVIC_ST_CURRENT_R
                                EQU              0xE000E018
    39 00000000         
-   40 00000000         ;Variables that hold the maximum values 
+   40 00000000         ;Variables that hold the maximum values
    41 00000000 001864A8 
                        MAX_DELAY
                                EQU              0x1864A8    ; The interval size
