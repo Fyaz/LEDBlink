@@ -81,7 +81,7 @@ SysTick_Wait
     LDR  R1, =NVIC_ST_CTRL_R        ; R1 = &NVIC_ST_CTRL_R
 SysTick_Wait_loop
     LDR  R3, [R1]                   ; R3 = NVIC_ST_CTRL_R
-    ANDS R3, R3, #0x00010000       ; Count set?
+    ANDS R3, R3, #0x00010000        ; Count set?
     BEQ  SysTick_Wait_loop
     BX   LR                         ; return
 

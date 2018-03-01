@@ -4,7 +4,7 @@
 ; Last Modified: 2/28/2018
 ; Brief description of the program:
 ;   A collection of operations are done in this program (at once):
-;	- A Green LED blinks repeatedly indicating that the program is running
+;	- An internal Blue LED blinks repeatedly indicating that the program is running
 ;	- A Red LED blinks on and off based on different patterns which can be changed by a switch (8Hz).
 ;	  The LED will cycle through different patterns as specified below:
 ;	    :on for (1/40s) -> on for (1/20s) -> on for (3/40s) -> on for (1/10s) -> always on -> always off -> loop:
@@ -35,24 +35,15 @@ GPIO_PORTF_CR_R    EQU 0x40025524
 GPIO_LOCK_KEY      EQU 0x4C4F434B  	; Unlocks the GPIO_CR register
 SYSCTL_RCGCGPIO_R  EQU 0x400FE608
 ; System Clock reigsters
-NVIC_ST_CTRL_R        EQU 0xE000E010
-NVIC_ST_RELOAD_R      EQU 0xE000E014
 NVIC_ST_CURRENT_R     EQU 0xE000E018
 
-NVIC_ST_CTRL_COUNT    EQU 0x00010000  ; Count flag
-NVIC_ST_CTRL_CLK_SRC  EQU 0x00000004  ; Clock Source
-NVIC_ST_CTRL_INTEN    EQU 0x00000002  ; Interrupt enable
-NVIC_ST_CTRL_ENABLE   EQU 0x00000001  ; Counter mode
-NVIC_ST_RELOAD_M      EQU 0x00FFFFFF  ; Counter load value
-
 ;Variables that hold the maximum values 
-MAX_DELAY		   EQU 0x0C		  ; The interval size of the delays (in 10ms)
-								  ;	0x1864A8 (in cycles)
+MAX_DELAY		   EQU 0x1864A8	  ; The interval size of the delays (in cycles)
+								  ;	0x0c (in 10ms)
 BREATHE_DELAY_MAX  EQU 0x5E00	  ; The delay required
 
      IMPORT TExaS_Init
 	 IMPORT SysTick_Init
-	 IMPORT SysTick_Wait10ms
 	 
      THUMB
 ;------------Global Variables-------------------------------------------------------------------
@@ -85,7 +76,7 @@ Start
 	BL	Ports_Init;		Initializes Ports E,F
 						; PE0 = Red LED output
 						; PE1 = positive logic Input (Switch)
-						; PF2 = Green LED output
+						; PF2 = Blue LED output
 						; PF4 = Hold switch for breathing functionality
 						
 ; Setting up variables
@@ -135,6 +126,7 @@ Blink_ifPushed
 	BEQ Blink;
 	LDR	R2, =prev_button_state;
 	STRB R3, [R2];
+	;BL	Debug_Capture;
 ; If the button is pushed, set PE4 to 1
 	CMP	R3, #0x00;			If the button is pushed
 	BNE	Blink_incrementDuty;
@@ -170,7 +162,7 @@ Blink
 	STR	R2, [R1];
 	LDR R2, =delay_off;
 	LDR R0, [R2];
-	BL	SysTick_Wait10ms	;BL	delay;	Delay the program for a amount of time specified in R0
+	BL	delay;	;BL	delay;	Delay the program for a amount of time specified in R0
 ; Turn on the light and wait
 	LDR	R1, =GPIO_PORTE_DATA_R;
 	LDR	R2, [R1];
@@ -178,7 +170,7 @@ Blink
 	STR	R2, [R1];
 	LDR R2, =delay_on;
 	LDR R0, [R2];
-	BL	SysTick_Wait10ms	;BL	delay
+	BL	delay	;BL	delay
 	
     B   main_loop
 ;-----------------------------------------------------------------------------------------------
@@ -252,7 +244,7 @@ Check_Debug
 	LDRB R2, [R1];	
 	ADD	R2, R2, #1;			debug_capture_counter++;
 	STRB R2, [R1];
-	CMP	R2, #3;
+	CMP	R2, #6;
 	BNE	Check_Debug_Leave;
 	BL	Debug_Capture;		if(debug_capture_counter == 3) capture data
 	MOV	R2, #0;
@@ -260,7 +252,7 @@ Check_Debug
 Check_Debug_Leave
 	POP	{R2, LR};
 	POP {R0, R1};
-	BX LR;					
+	BX LR;		
 	
 ;-------CHECK_Green-----------------------------------------------------------------------------
 ; Wait 5 duty cycles, then save the points in the Dubugging arrays
@@ -299,76 +291,72 @@ Check_Breathe_Leave
 	
 ;-------DEBUG_Init------------------------------------------------------------------------------
     ;Initiliazing Debug Dump
-	;R10 = data_capture pointer
-	;R11 = time_capture pointer
 Debug_Init
-   	LDR R10, =data_capture
-	LDR R11, =time_capture;		Created pointers
-
 	PUSH {R0, R1}
 	PUSH {R2, R3}
-	MOV R0, #0x01;		8 bits in data_capture
-	MOV R1, #50;
 	
+	LDR R2, =data_capture;
+	LDR R3, =time_capture;		Created pointers
+; Fill the data array with 0xFF (signifying empty)	
+	MOV R0, #50;
 setting_data_capture
-	SUB R1,R1, #0x01
-	MOV R2, #0xFF;		; Fill the data array with 0xFF (signifying empty)
-	STRB R2, [R10]
-	ADD R10, R10, R0
-	CMP R1, #0x0;
+	SUB R0,R0, #0x01
+	MOV R1, #0xFF;		
+	STRB R1, [R2]
+	ADD R2, R2, #1;
+	CMP R0, #0x0;
 	BNE setting_data_capture
-	
-	MOV R1, #50;
-	MOV	R2, #0x04;
-	MUL R0,R0, R2;
+ ; Fill the time array with 0xFFFFFFFF (signifying empty)	
+	MOV R0, #50;
 setting_time_capture
-	MOV	R2, #0x01;
-	SUB R1,R1, R2;
-	MOV R2, #0xFFFFFFFF; ; Fill the time array with 0xFFFFFFFF (signifying empty)
-	STR R2, [R10]
-	ADD R10, R10, R0
-	CMP R1, #0x0;
+	SUB R0,R0, #1;
+	MOV R1, #0xFFFFFFFF;
+	STR R1, [R3]
+	ADD R3, R3, #4;
+	CMP R0, #0x0;
 	BNE setting_time_capture
 	
-	LDR R10, =data_capture
-	LDR R11,=time_capture
 	POP {R2, R3}
 	POP {R0, R1}
 	BX LR
 	
 ;-------DEBUG_CAPTURE---------------------------------------------------------------------------
-;saves one data point
+; saves one data point
 Debug_Capture		
    	PUSH {R0,R1}
+	PUSH {R2,LR}
 	LDR R0 , =NEntries
-	LDR R0, [R0]
-	CMP R0 , #50
-	BEQ SAVER
-	BHI DONE_C
-	LDR R0, =GPIO_PORTE_DATA_R
-	AND R0, R0, #0x02;		Capturing Pins E0 and E1
-	LSR R0, R0, #0x03;
-	LDR R1, =GPIO_PORTE_DATA_R
-	AND R1,R1,#0x01;
-	AND R0,R0,R1;
-	LDR R1, =NVIC_ST_CURRENT_R;	Capturing Time
-	STRB R0, [R10];			Finished Storing Data
-	
-	STR R1, [R11]
-	ADD R10, R10, #0x01
-	ADD R11, R11, #0x04
-	LDR R0, =NEntries
-	LDR R1, [R0]			incrementing NEntries
-	ADD R1,R1, #0x01
-	STR R1, [R0]
-	
-DONE_C	POP {R0,R1}
+	LDR R1, [R0]
+	CMP R1 , #50
+	BHS DONE_C;			if (the array is not full)
+	ADD	R1, R1, #1;			Add a new entry
+	STRB R1, [R0];			NEntries++;
+; Record the current data entries
+	LDR R0, =GPIO_PORTE_DATA_R;	
+	LDR	R0, [R0];
+	ADD	R1, R0, #0;
+	AND R0, R0, #0x01;		R0 holds the data for PE0
+	AND	R1, R1, #0x02;		R1 holds the data for PE1
+	LSL R1, R1, #3;			Move PE1 to PE4 
+	ORR	R1, R1, R0;			Merge the two bits (PE0 | PE4)
+	LDR R0, =data_capture;
+	LDR	R2, =NEntries;
+	LDRB R2, [R2];
+	ADD	R0, R0, R2;
+	STRB R1, [R0];			Store the value in the correct spot on the data array
+; Record the current time
+	MOV	R0, #4;
+	MUL R2, R2, R0;			Increment in the time array by 4 bytes
+	LDR	R1, =time_capture;
+	ADD	R1, R1, R2;
+	LDR R0, =NVIC_ST_CURRENT_R
+	LDR R0, [R0];
+	STR	R0, [R1];			Store the current time in the correct spot on the time array
+; Restore the registers and leave
+DONE_C	
+	POP {R2, LR};			
+	POP {R0,R1}
 	BX LR;
-SAVER	ADD R0,R0, #0x01
-	LDR R1, =NEntries
-	STR R0, [R1]
-	SAVE data.txt [R10], [R11]
-	B DONE_C
 
 ;-------Toggle Green LED (PF2)------------------------------------------------------------------
 ;Toggles the Green LED on and off (PF2)
@@ -442,6 +430,7 @@ Ports_Init
 	POP  {R2, LR};
 	POP	 {R0, R1};
 	BX LR;
+	
 ;-----------------------------------------------------------------------------------------------
     ALIGN      ; make sure the end of this section is aligned
     END        ; end of file

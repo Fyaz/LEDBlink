@@ -3,7 +3,7 @@
 <title>Static Call Graph - [.\Lab3.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image .\Lab3.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5.03 [Build 76]: Last Updated: Wed Feb 28 15:38:43 2018
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5.03 [Build 76]: Last Updated: Thu Mar 01 00:18:06 2018
 <BR><P>
 <H3>Maximum Stack Usage =         12 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -577,7 +577,6 @@ Global Symbols
 <LI>Call Chain = Start &rArr; TExaS_Init &rArr; UART0_Init
 </UL>
 <BR>[Calls]<UL><LI><a href="#[7e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;TExaS_Init
-<LI><a href="#[80]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SysTick_Wait10ms
 <LI><a href="#[7f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SysTick_Init
 </UL>
 <BR>[Called By]<UL><LI><a href="#[7a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Reset_Handler
@@ -587,14 +586,12 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[7d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Start
 </UL>
 
-<P><STRONG><a name="[81]"></a>SysTick_Wait</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, systick.o(.text))
+<P><STRONG><a name="[81]"></a>SysTick_Wait</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, systick.o(.text), UNUSED)
 <BR><BR>[Called By]<UL><LI><a href="#[80]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SysTick_Wait10ms
 </UL>
 
-<P><STRONG><a name="[80]"></a>SysTick_Wait10ms</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, systick.o(.text))
+<P><STRONG><a name="[80]"></a>SysTick_Wait10ms</STRONG> (Thumb, 0 bytes, Stack size unknown bytes, systick.o(.text), UNUSED)
 <BR><BR>[Calls]<UL><LI><a href="#[81]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;SysTick_Wait
-</UL>
-<BR>[Called By]<UL><LI><a href="#[7d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Start
 </UL>
 
 <P><STRONG><a name="[86]"></a>ADC1_Init</STRONG> (Thumb, 170 bytes, Stack size 8 bytes, texas.o(.text))
