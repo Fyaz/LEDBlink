@@ -170,8 +170,8 @@ ARM Macro Assembler    Page 3
               00 00    data_capture
                                SPACE            50          ; Array of 50 8-byt
                                                             e numbers
-   62 00000040         ; 0x2000003e
-   63 00000040         ; 0x20000090
+   62 00000040         ; Start: 0x2000003f
+   63 00000040         ; End:  0x20000090
    64 00000040 00 00 00 
               00 00 00 
               00 00 00 
@@ -247,8 +247,8 @@ ARM Macro Assembler    Page 4
               00 00    time_capture
                                SPACE            200         ; Array of 50 32-by
                                                             te numbers
-   65 00000108         ; 0x20000070
-   66 00000108         ; 0x20000138
+   65 00000108         ; Start: 0x20000074
+   66 00000108         ; End:  0x20000138
    67 00000108 00      debug_capture_counter
                                SPACE            1           ; it counts everyti
                                                             me the main loop is
@@ -278,12 +278,12 @@ ARM Macro Assembler    Page 5
    77 00000000         ; TExaS_Init sets bus clock at 80 MHz
    78 00000000 F7FF FFFE       BL               TExaS_Init  ; voltmeter, scope 
                                                             on PD3
-   79 00000004 F000 F8CF       BL               Debug_Init  ; Initializes the D
+   79 00000004 F000 F8E4       BL               Debug_Init  ; Initializes the D
                                                             ebugging Tools
    80 00000008 F7FF FFFE       BL               SysTick_Init ; Initializes the 
                                                             SysTick (method in 
                                                             SysTick.s)
-   81 0000000C F000 F92B       BL               Ports_Init  ;  Initializes Port
+   81 0000000C F000 F93A       BL               Ports_Init  ;  Initializes Port
                                                             s E,F
    82 00000010         ; PE0 = Red LED output
    83 00000010         ; PE1 = positive logic Input (Switch)
@@ -292,33 +292,33 @@ ARM Macro Assembler    Page 5
    86 00000010         
    87 00000010         ; Setting up variables
    88 00000010         Configure
-   89 00000010 49AF            LDR              R1, =MAX_DELAY ;  
+   89 00000010 49B7            LDR              R1, =MAX_DELAY ;  
    90 00000012 F04F 0205       MOV              R2, #5      ;     
    91 00000016 FBB1 F2F2       UDIV             R2, R1, R2  ;  split the max de
                                                             lay into 5 equal se
                                                             ctions
-   92 0000001A 49AE            LDR              R1, =delay_inc ;
+   92 0000001A 49B6            LDR              R1, =delay_inc ;
    93 0000001C 600A            STR              R2, [R1]    ;   delay_inc = (MA
                                                             X_DELAY / 5)
    94 0000001E         
-   95 0000001E 49AD            LDR              R1, =delay_inc ;
+   95 0000001E 49B5            LDR              R1, =delay_inc ;
    96 00000020 680A            LDR              R2, [R1]    ;
    97 00000022 F04F 0304       MOV              R3, #4      ;
    98 00000026 FB02 F203       MUL              R2, R2, R3  ; 
-   99 0000002A 49AB            LDR              R1, =delay_off ; 
+   99 0000002A 49B3            LDR              R1, =delay_off ; 
   100 0000002C 600A            STR              R2, [R1]    ;   Default: the de
                                                             lay_off starts @ 4/
                                                             5 of the MAX_DELAY
   101 0000002E         
-  102 0000002E 49A9            LDR              R1, =delay_inc ;
+  102 0000002E 49B1            LDR              R1, =delay_inc ;
   103 00000030 680A            LDR              R2, [R1]    ;
-  104 00000032 49AA            LDR              R1, =delay_on ;
+  104 00000032 49B2            LDR              R1, =delay_on ;
   105 00000034 600A            STR              R2, [R1]    ;   Default: the de
                                                             lay_on on starts @ 
                                                             1/5 of the MAX_DELA
                                                             Y
   106 00000036         
-  107 00000036 49AA            LDR              R1, =green_counter ;
+  107 00000036 49B2            LDR              R1, =green_counter ;
   108 00000038 F04F 0200       MOV              R2, #0      ;
   109 0000003C 700A            STRB             R2, [R1]    ;   Initially set t
                                                             he green_counter to
@@ -329,13 +329,16 @@ ARM Macro Assembler    Page 5
 ARM Macro Assembler    Page 6 
 
 
-  110 0000003E 49A9            LDR              R1, =debug_capture_counter ;
+  110 0000003E 49B1            LDR              R1, =debug_capture_counter ;
   111 00000040 F04F 0200       MOV              R2, #0      ;
   112 00000044 700A            STRB             R2, [R1]    ;   Initially set t
                                                             he debug_counter to
                                                              0
   113 00000046         
-  114 00000046 F04F 0900       MOV              R9, #0      ;
+  114 00000046 F04F 0C00       MOV              R12, #0     ;   R12 will be use
+                                                            d to quickly collec
+                                                            t the seven states 
+                                                            after release
   115 0000004A         
   116 0000004A B662            CPSIE            I           ; TExaS voltmeter, 
                                                             scope runs on inter
@@ -344,511 +347,522 @@ ARM Macro Assembler    Page 6
   118 0000004C         ; The main loop engine
   119 0000004C         main_loop
   120 0000004C         
-  121 0000004C         ;BL Check_Debug; ; Check if we need to record debugging 
-                       statistics
-  122 0000004C F000 F88B       BL               Check_Green ; Check whether to 
+  121 0000004C F000 F8A0       BL               Check_Green ; Check whether to 
                                                             toggle the green LE
                                                             D on or not
-  123 00000050 F000 F89B       BL               Check_Breathe ; Check if whethe
+  122 00000050 F000 F8B0       BL               Check_Breathe ; Check if whethe
                                                             r we need to make t
                                                             he LED Breathe
-  124 00000054         
-  125 00000054         ;If a button @ PE1 is pushed, increment the blinking pat
+  123 00000054         
+  124 00000054         ;If a button @ PE1 is pushed, increment the blinking pat
                        tern
-  126 00000054         Blink_ifPushed
-  127 00000054 49A4            LDR              R1, =GPIO_PORTE_DATA_R ;
-  128 00000056 4AA5            LDR              R2, =prev_button_state ;
-  129 00000058 7812            LDRB             R2, [R2]    ;
-  130 0000005A 680B            LDR              R3, [R1]    ;    <- R3 holds th
+  125 00000054         Blink_ifPushed
+  126 00000054 49AC            LDR              R1, =GPIO_PORTE_DATA_R ;
+  127 00000056 4AAD            LDR              R2, =prev_button_state ;
+  128 00000058 7812            LDRB             R2, [R2]    ;
+  129 0000005A 680B            LDR              R3, [R1]    ;    <- R3 holds th
                                                             e data from the Por
                                                             tE data register
-  131 0000005C F003 0302       AND              R3, R3, #0x02 ;   Check whether
+  130 0000005C F003 0302       AND              R3, R3, #0x02 ;   Check whether
                                                              the button has bee
                                                             n pushed or not
-  132 00000060 4293            CMP              R3, R2      ;     <- Check if t
+  131 00000060 4293            CMP              R3, R2      ;     <- Check if t
                                                             he button is in the
                                                              same state as befo
                                                             re 
-  133 00000062 D01C            BEQ              Blink       ;
-  134 00000064 F000 F8C4       BL               Debug_Capture ;
-  135 00000068 4AA0            LDR              R2, =prev_button_state ;
-  136 0000006A 7013            STRB             R3, [R2]    ;
-  137 0000006C         ; If the button is pushed, set PE4 to 1
-  138 0000006C 2B00            CMP              R3, #0x00   ;   If the button i
+  132 00000062 D023            BEQ              Blink       ;
+  133 00000064 4AA9            LDR              R2, =prev_button_state ;
+  134 00000066 7013            STRB             R3, [R2]    ;
+  135 00000068         ; If the button is pushed, set PE4 to 1
+  136 00000068 2B00            CMP              R3, #0x00   ;   If the button i
+                                                            s released
+  137 0000006A D104            BNE              Collect_skip ;
+  138 0000006C F1BC 0F00       CMP              R12, #0     ;
+  139 00000070 D101            BNE              Collect_skip ;
+  140 00000072 F04F 0C07       MOV              R12, #7     ;
+  141 00000076         Collect_skip
+  142 00000076 2B02            CMP              R3, #0x02   ;   If the button i
                                                             s pushed
-  139 0000006E D100            BNE              Blink_incrementDuty ;
-  140 00000070 E015            B                Blink       ;
-  141 00000072         Blink_incrementDuty
-  142 00000072         ; Incrementing the duty time
-  143 00000072 4A98            LDR              R2, =delay_inc ;
-  144 00000074 6812            LDR              R2, [R2]    ;    
-  145 00000076 4998            LDR              R1, =delay_off ;   
-  146 00000078 680B            LDR              R3, [R1]    ;    
-  147 0000007A EBA3 0302       SUB              R3, R3, R2  ;    Decrement the 
-                                                            off time
-  148 0000007E 600B            STR              R3, [R1]    ;
-  149 00000080 4996            LDR              R1, =delay_on ;
+  143 00000078 D102            BNE              Blink_incrementDuty ;
+  144 0000007A F000 F8CA       BL               Debug_Capture ;
+  145 0000007E E015            B                Blink       ;
+  146 00000080         Blink_incrementDuty
+  147 00000080         ; Incrementing the duty time
 
 
 
 ARM Macro Assembler    Page 7 
 
 
-  150 00000082 680B            LDR              R3, [R1]    ;
-  151 00000084 4413            ADD              R3, R3, R2  ;    Increment the 
+  148 00000080 4A9C            LDR              R2, =delay_inc ;
+  149 00000082 6812            LDR              R2, [R2]    ;    
+  150 00000084 499C            LDR              R1, =delay_off ;   
+  151 00000086 680B            LDR              R3, [R1]    ;    
+  152 00000088 EBA3 0302       SUB              R3, R3, R2  ;    Decrement the 
+                                                            off time
+  153 0000008C 600B            STR              R3, [R1]    ;
+  154 0000008E 499B            LDR              R1, =delay_on ;
+  155 00000090 680B            LDR              R3, [R1]    ;
+  156 00000092 4413            ADD              R3, R3, R2  ;    Increment the 
                                                             on time
-  152 00000086 600B            STR              R3, [R1]    ;
-  153 00000088         ;Check if the duty time needs to be reset (always on -> 
+  157 00000094 600B            STR              R3, [R1]    ;
+  158 00000096         ;Check if the duty time needs to be reset (always on -> 
                        always off)
-  154 00000088 4993            LDR              R1, =delay_off ;
-  155 0000008A 680A            LDR              R2, [R1]    ;
-  156 0000008C 2A00            CMP              R2, #0      ;
-  157 0000008E D506            BPL              Blink       ;    If the the off
+  159 00000096 4998            LDR              R1, =delay_off ;
+  160 00000098 680A            LDR              R2, [R1]    ;
+  161 0000009A 2A00            CMP              R2, #0      ;
+  162 0000009C D506            BPL              Blink       ;    If the the off
                                                              time is < 0 (off <
                                                              0%, on > 100%), re
                                                             set the values to o
                                                             ff = 100%, on = 0%
-  158 00000090 4A8F            LDR              R2, =MAX_DELAY ;
-  159 00000092 4991            LDR              R1, =delay_off ;
-  160 00000094 600A            STR              R2, [R1]    ;
-  161 00000096 4991            LDR              R1, =delay_on ;
-  162 00000098 F04F 0200       MOV              R2, #0      ;     Reset the on 
+  163 0000009E 4A94            LDR              R2, =MAX_DELAY ;
+  164 000000A0 4995            LDR              R1, =delay_off ;
+  165 000000A2 600A            STR              R2, [R1]    ;
+  166 000000A4 4995            LDR              R1, =delay_on ;
+  167 000000A6 F04F 0200       MOV              R2, #0      ;     Reset the on 
                                                             time to 0 (light is
                                                              always off)
-  163 0000009C 600A            STR              R2, [R1]    ;
-  164 0000009E         Blink
-  165 0000009E         ; Turn off the light and wait
-  166 0000009E 4992            LDR              R1, =GPIO_PORTE_DATA_R ;
-  167 000000A0 680A            LDR              R2, [R1]    ;
-  168 000000A2 F022 0201       BIC              R2, #0x01   ;
-  169 000000A6 600A            STR              R2, [R1]    ;
-  170 000000A8 4A8B            LDR              R2, =delay_off ;
-  171 000000AA 6810            LDR              R0, [R2]    ;
-  172 000000AC F000 F8D1       BL               delay       ; ;BL delay; Delay 
+  168 000000AA 600A            STR              R2, [R1]    ;
+  169 000000AC         Blink
+  170 000000AC         ; Turn off the light and wait
+  171 000000AC F1BC 0F00       CMP              R12, #0     ;
+  172 000000B0 D003            BEQ              Blink_Off_Cap_Skip
+  173 000000B2 F000 F8AE       BL               Debug_Capture ;
+  174 000000B6 F1AC 0C01       SUB              R12, R12, #1 ;
+  175 000000BA         Blink_Off_Cap_Skip
+  176 000000BA 4993            LDR              R1, =GPIO_PORTE_DATA_R ;
+  177 000000BC 680A            LDR              R2, [R1]    ;
+  178 000000BE F022 0201       BIC              R2, #0x01   ;
+  179 000000C2 600A            STR              R2, [R1]    ;
+  180 000000C4 4A8C            LDR              R2, =delay_off ;
+  181 000000C6 6810            LDR              R0, [R2]    ;
+  182 000000C8 F000 F8D2       BL               delay       ; ;BL delay; Delay 
                                                             the program for a a
                                                             mount of time speci
                                                             fied in R0
-  173 000000B0         ; Turn on the light and wait
-  174 000000B0 498D            LDR              R1, =GPIO_PORTE_DATA_R ;
-  175 000000B2 680A            LDR              R2, [R1]    ;
-  176 000000B4 F042 0201       ORR              R2, #0x01   ;  
-  177 000000B8 600A            STR              R2, [R1]    ;
-  178 000000BA 4A88            LDR              R2, =delay_on ;
-  179 000000BC 6810            LDR              R0, [R2]    ;
-  180 000000BE F000 F8C8       BL               delay       ;BL delay
-  181 000000C2         
-  182 000000C2 E7C3            B                main_loop
-  183 000000C4         ;-------------------------------------------------------
-                       ----------------------------------------
-  184 000000C4         Breathe_Start
-  185 000000C4         ; a subroutine that handles all the breathing functional
-                       ity by completly reworking everything
-  186 000000C4 B4FF            PUSH             {R0-R7}     ;
-  187 000000C6 E92D 4100       PUSH             {R8, LR}    ;
-  188 000000CA         
-  189 000000CA         ; Setting up variables
-  190 000000CA 4887            LDR              R0, =GPIO_PORTE_DATA_R ;
-  191 000000CC F8DF 9220       LDR              R9, =GPIO_PORTF_DATA_R ;
-  192 000000D0 F44F 42BC       LDR              R2, =BREATHE_DELAY_MAX ;
-  193 000000D4 F44F 73FA       MOV              R3, #500    ;
-  194 000000D8 FBB2 F4F3       UDIV             R4, R2, R3  ;   The increments 
-                                                            of the delay
+  183 000000CC         ; Turn on the light and wait
+  184 000000CC F1BC 0F00       CMP              R12, #0     ;
+  185 000000D0 D003            BEQ              Blink_On_Cap_Skip
+  186 000000D2 F000 F89E       BL               Debug_Capture ;
+  187 000000D6 F1AC 0C01       SUB              R12, R12, #1 ;
+  188 000000DA         Blink_On_Cap_Skip
+  189 000000DA 498B            LDR              R1, =GPIO_PORTE_DATA_R ;
+  190 000000DC 680A            LDR              R2, [R1]    ;
+  191 000000DE F042 0201       ORR              R2, #0x01   ;  
+  192 000000E2 600A            STR              R2, [R1]    ;
+  193 000000E4 4A85            LDR              R2, =delay_on ;
+  194 000000E6 6810            LDR              R0, [R2]    ;
 
 
 
 ARM Macro Assembler    Page 8 
 
 
-  195 000000DC F102 0500       ADD              R5, R2, #0  ;    Default: off f
+  195 000000E8 F000 F8C2       BL               delay       ;BL delay
+  196 000000EC         
+  197 000000EC E7AE            B                main_loop
+  198 000000EE         ;-------------------------------------------------------
+                       ----------------------------------------
+  199 000000EE         Breathe_Start
+  200 000000EE         ; a subroutine that handles all the breathing functional
+                       ity by completly reworking everything
+  201 000000EE B4FF            PUSH             {R0-R7}     ;
+  202 000000F0 E92D 4100       PUSH             {R8, LR}    ;
+  203 000000F4         
+  204 000000F4         ; Setting up variables
+  205 000000F4 4884            LDR              R0, =GPIO_PORTE_DATA_R ;
+  206 000000F6 F8DF 9218       LDR              R9, =GPIO_PORTF_DATA_R ;
+  207 000000FA F44F 42BC       LDR              R2, =BREATHE_DELAY_MAX ;
+  208 000000FE F44F 73FA       MOV              R3, #500    ;
+  209 00000102 FBB2 F4F3       UDIV             R4, R2, R3  ;   The increments 
+                                                            of the delay
+  210 00000106 F102 0500       ADD              R5, R2, #0  ;    Default: off f
                                                             or 4/5 of 80Hz
-  196 000000E0 F04F 0600       MOV              R6, #0      ;     Default: on f
+  211 0000010A F04F 0600       MOV              R6, #0      ;     Default: on f
                                                             or 1/5 of 80Hz
-  197 000000E4 F102 0700       ADD              R7, R2, #0  ;
-  198 000000E8         
-  199 000000E8         Breathe_loop
-  200 000000E8 F8D9 1000       LDR              R1, [R9]    ;    <- R1 holds th
+  212 0000010E F102 0700       ADD              R7, R2, #0  ;
+  213 00000112         
+  214 00000112         Breathe_loop
+  215 00000112 F8D9 1000       LDR              R1, [R9]    ;    <- R1 holds th
                                                             e data from the dat
                                                             a register
-  201 000000EC         Breathe_ifPushed
-  202 000000EC F001 0310       AND              R3, R1, #0x10 ;   Check whether
+  216 00000116         Breathe_ifPushed
+  217 00000116 F001 0310       AND              R3, R1, #0x10 ;   Check whether
                                                              the button has bee
                                                             n pushed or not
-  203 000000F0 2B10            CMP              R3, #0x10   ;    Keep Breathing
+  218 0000011A 2B10            CMP              R3, #0x10   ;    Keep Breathing
                                                              until the button i
                                                             s released.
-  204 000000F2 D100            BNE              Breathe_incrementDuty ;
-  205 000000F4 E021            B                Breathe_Stop ;
-  206 000000F6         
-  207 000000F6         Breathe_incrementDuty
-  208 000000F6         ; Incrementing the duty time
-  209 000000F6 EBA5 0504       SUB              R5, R5, R4  ;    Decrement the 
+  219 0000011C D100            BNE              Breathe_incrementDuty ;
+  220 0000011E E021            B                Breathe_Stop ;
+  221 00000120         
+  222 00000120         Breathe_incrementDuty
+  223 00000120         ; Incrementing the duty time
+  224 00000120 EBA5 0504       SUB              R5, R5, R4  ;    Decrement the 
                                                             off time
-  210 000000FA 4426            ADD              R6, R6, R4  ;    Increment the 
+  225 00000124 4426            ADD              R6, R6, R4  ;    Increment the 
                                                             on time
-  211 000000FC 2D00            CMP              R5, #0      ;
-  212 000000FE D402            BMI              Breathe_Verse ;
-  213 00000100 D001            BEQ              Breathe_Verse ;   Check if we'v
+  226 00000126 2D00            CMP              R5, #0      ;
+  227 00000128 D402            BMI              Breathe_Verse ;
+  228 0000012A D001            BEQ              Breathe_Verse ;   Check if we'v
                                                             e stopped or froze 
                                                             the delay of the li
                                                             ght (either R5 or R
                                                             6 reach zero)
-  214 00000102 2E00            CMP              R6, #0      ;
-  215 00000104 D506            BPL              Breathe     ;
-  216 00000106         Breathe_Verse
-  217 00000106 F04F 33FF       MOV              R3, #-1     ;
-  218 0000010A FB04 F403       MUL              R4, R4, R3  ;    Once we reach 
+  229 0000012C 2E00            CMP              R6, #0      ;
+  230 0000012E D506            BPL              Breathe     ;
+  231 00000130         Breathe_Verse
+  232 00000130 F04F 33FF       MOV              R3, #-1     ;
+  233 00000134 FB04 F403       MUL              R4, R4, R3  ;    Once we reach 
                                                             a maximum, down/up 
                                                             or up depending on 
                                                             the scenario
-  219 0000010E EBA5 0504       SUB              R5, R5, R4  ;    Decrement the 
-                                                            off time
-  220 00000112 4426            ADD              R6, R6, R4  ;    Increment the 
-                                                            on time
-  221 00000114         Breathe
-  222 00000114         ; Turn off the light and wait
-  223 00000114 F021 0101       BIC              R1, #0x01   ;  
-  224 00000118 6001            STR              R1, [R0]    ;
-  225 0000011A B403            PUSH             {R0, R1}    ;
-  226 0000011C F105 0000       ADD              R0, R5, #0  ;
-  227 00000120 F000 F897       BL               delay       ;     Delay the pro
-                                                            gram for a amount o
-                                                            f time specified in
-                                                             R7
-  228 00000124 BC03            POP              {R0, R1}    ;
-  229 00000126         ; Turn on the light and wait
-  230 00000126 F041 0101       ORR              R1, #0x01   ;  
-  231 0000012A 6001            STR              R1, [R0]    ;
 
 
 
 ARM Macro Assembler    Page 9 
 
 
-  232 0000012C B403            PUSH             {R0, R1}    ;
-  233 0000012E F106 0000       ADD              R0, R6, #0  ;
-  234 00000132 F000 F88E       BL               delay       ;
-  235 00000136 BC03            POP              {R0, R1}    ;
-  236 00000138         
-  237 00000138 E7D6            B                Breathe_loop
-  238 0000013A         
-  239 0000013A         Breathe_Stop
-  240 0000013A E8BD 4100       POP              {R8,LR}     ;
-  241 0000013E BCFF            POP              {R0-R7}     ;
-  242 00000140         
-  243 00000140 4770            BX               LR          ;
-  244 00000142         
-  245 00000142         ;-------CHECK_debug-------------------------------------
+  234 00000138 EBA5 0504       SUB              R5, R5, R4  ;    Decrement the 
+                                                            off time
+  235 0000013C 4426            ADD              R6, R6, R4  ;    Increment the 
+                                                            on time
+  236 0000013E         Breathe
+  237 0000013E         ; Turn off the light and wait
+  238 0000013E F021 0101       BIC              R1, #0x01   ;  
+  239 00000142 6001            STR              R1, [R0]    ;
+  240 00000144 B403            PUSH             {R0, R1}    ;
+  241 00000146 F105 0000       ADD              R0, R5, #0  ;
+  242 0000014A F000 F891       BL               delay       ;     Delay the pro
+                                                            gram for a amount o
+                                                            f time specified in
+                                                             R7
+  243 0000014E BC03            POP              {R0, R1}    ;
+  244 00000150         ; Turn on the light and wait
+  245 00000150 F041 0101       ORR              R1, #0x01   ;  
+  246 00000154 6001            STR              R1, [R0]    ;
+  247 00000156 B403            PUSH             {R0, R1}    ;
+  248 00000158 F106 0000       ADD              R0, R6, #0  ;
+  249 0000015C F000 F888       BL               delay       ;
+  250 00000160 BC03            POP              {R0, R1}    ;
+  251 00000162         
+  252 00000162 E7D6            B                Breathe_loop
+  253 00000164         
+  254 00000164         Breathe_Stop
+  255 00000164 E8BD 4100       POP              {R8,LR}     ;
+  256 00000168 BCFF            POP              {R0-R7}     ;
+  257 0000016A         
+  258 0000016A 4770            BX               LR          ;
+  259 0000016C         
+  260 0000016C         ;-------CHECK_debug-------------------------------------
                        ----------------------------------------
-  246 00000142         ; Wait 5 duty cycles, then save the points in the Dubugg
+  261 0000016C         ; Wait 5 duty cycles, then save the points in the Dubugg
                        ing arrays
-  247 00000142         Check_Debug
-  248 00000142 B403            PUSH             {R0, R1}    ;
-  249 00000144 B504            PUSH             {R2, LR}    ;
-  250 00000146 4967            LDR              R1, =debug_capture_counter ;
-  251 00000148 780A            LDRB             R2, [R1]    ; 
-  252 0000014A F102 0201       ADD              R2, R2, #1  ;   debug_capture_c
+  262 0000016C         Check_Debug
+  263 0000016C B403            PUSH             {R0, R1}    ;
+  264 0000016E B504            PUSH             {R2, LR}    ;
+  265 00000170 4964            LDR              R1, =debug_capture_counter ;
+  266 00000172 780A            LDRB             R2, [R1]    ; 
+  267 00000174 F102 0201       ADD              R2, R2, #1  ;   debug_capture_c
                                                             ounter++;
-  253 0000014E 700A            STRB             R2, [R1]    ;
-  254 00000150 2A06            CMP              R2, #6      ;
-  255 00000152 D104            BNE              Check_Debug_Leave ;
-  256 00000154 F000 F84C       BL               Debug_Capture ;  if(debug_captu
+  268 00000178 700A            STRB             R2, [R1]    ;
+  269 0000017A 2A06            CMP              R2, #6      ;
+  270 0000017C D104            BNE              Check_Debug_Leave ;
+  271 0000017E F000 F848       BL               Debug_Capture ;  if(debug_captu
                                                             re_counter == 3) ca
                                                             pture data
-  257 00000158 F04F 0200       MOV              R2, #0      ;
-  258 0000015C 700A            STRB             R2, [R1]    ;
-  259 0000015E         Check_Debug_Leave
-  260 0000015E E8BD 4004       POP              {R2, LR}    ;
-  261 00000162 BC03            POP              {R0, R1}    ;
-  262 00000164 4770            BX               LR          ;  
-  263 00000166         
-  264 00000166         ;-------CHECK_Green-------------------------------------
+  272 00000182 F04F 0200       MOV              R2, #0      ;
+  273 00000186 700A            STRB             R2, [R1]    ;
+  274 00000188         Check_Debug_Leave
+  275 00000188 E8BD 4004       POP              {R2, LR}    ;
+  276 0000018C BC03            POP              {R0, R1}    ;
+  277 0000018E 4770            BX               LR          ;  
+  278 00000190         
+  279 00000190         ;-------CHECK_Green-------------------------------------
                        ----------------------------------------
-  265 00000166         ; Wait 5 duty cycles, then save the points in the Dubugg
+  280 00000190         ; Wait 5 duty cycles, then save the points in the Dubugg
                        ing arrays
-  266 00000166         Check_Green
-  267 00000166 B403            PUSH             {R0, R1}    ;
-  268 00000168 B504            PUSH             {R2, LR}    ;
-  269 0000016A 495D            LDR              R1, =green_counter ;
-  270 0000016C 780A            LDRB             R2, [R1]    ;
-  271 0000016E F102 0201       ADD              R2, R2, #1  ;   green_counter++
-                                                            
-  272 00000172 700A            STRB             R2, [R1]    ;
-  273 00000174 2A03            CMP              R2, #3      ;
-  274 00000176 D104            BNE              Check_Green_Leave ; 
-  275 00000178 F000 F863       BL               Toggle_Green ;  if(green_counte
-                                                            r == 3) toggle Gree
-                                                            n LED
-  276 0000017C F04F 0200       MOV              R2, #0      ;
-  277 00000180 700A            STRB             R2, [R1]    ;
-  278 00000182         Check_Green_Leave
-  279 00000182 E8BD 4004       POP              {R2, LR}    ;
-  280 00000186 BC03            POP              {R0, R1}    ;
 
 
 
 ARM Macro Assembler    Page 10 
 
 
-  281 00000188 4770            BX               LR          ;  
-  282 0000018A         
-  283 0000018A         ;-------CHECK_Breathe-----------------------------------
+  281 00000190         Check_Green
+  282 00000190 B403            PUSH             {R0, R1}    ;
+  283 00000192 B504            PUSH             {R2, LR}    ;
+  284 00000194 495A            LDR              R1, =green_counter ;
+  285 00000196 780A            LDRB             R2, [R1]    ;
+  286 00000198 F102 0201       ADD              R2, R2, #1  ;   green_counter++
+                                                            
+  287 0000019C 700A            STRB             R2, [R1]    ;
+  288 0000019E 2A03            CMP              R2, #3      ;
+  289 000001A0 D104            BNE              Check_Green_Leave ; 
+  290 000001A2 F000 F85D       BL               Toggle_Green ;  if(green_counte
+                                                            r == 3) toggle Gree
+                                                            n LED
+  291 000001A6 F04F 0200       MOV              R2, #0      ;
+  292 000001AA 700A            STRB             R2, [R1]    ;
+  293 000001AC         Check_Green_Leave
+  294 000001AC E8BD 4004       POP              {R2, LR}    ;
+  295 000001B0 BC03            POP              {R0, R1}    ;
+  296 000001B2 4770            BX               LR          ;  
+  297 000001B4         
+  298 000001B4         ;-------CHECK_Breathe-----------------------------------
                        ------------------------------------------
-  284 0000018A         ; If the button @ PF4 is pushed, Start breathing
-  285 0000018A         Check_Breathe
-  286 0000018A B403            PUSH             {R0, R1}    ;
-  287 0000018C B504            PUSH             {R2, LR}    ;
-  288 0000018E 4958            LDR              R1, =GPIO_PORTF_DATA_R ;
-  289 00000190 680A            LDR              R2, [R1]    ;
-  290 00000192 F002 0210       AND              R2, R2, #0x10 ;   Check whether
+  299 000001B4         ; If the button @ PF4 is pushed, Start breathing
+  300 000001B4         Check_Breathe
+  301 000001B4 B403            PUSH             {R0, R1}    ;
+  302 000001B6 B504            PUSH             {R2, LR}    ;
+  303 000001B8 4955            LDR              R1, =GPIO_PORTF_DATA_R ;
+  304 000001BA 680A            LDR              R2, [R1]    ;
+  305 000001BC F002 0210       AND              R2, R2, #0x10 ;   Check whether
                                                              the button has bee
                                                             n pushed or not
-  291 00000196 2A00            CMP              R2, #0x00   ;
-  292 00000198 D101            BNE              Check_Breathe_Leave ; If SW1 is
+  306 000001C0 2A00            CMP              R2, #0x00   ;
+  307 000001C2 D101            BNE              Check_Breathe_Leave ; If SW1 is
                                                              pushed, start the 
                                                             breathing
-  293 0000019A F7FF FF93       BL               Breathe_Start ;
-  294 0000019E         Check_Breathe_Leave
-  295 0000019E E8BD 4004       POP              {R2, LR}    ;
-  296 000001A2 BC03            POP              {R0, R1}    ;
-  297 000001A4 4770            BX               LR          ;
-  298 000001A6         
-  299 000001A6         ;-------DEBUG_Init--------------------------------------
+  308 000001C4 F7FF FF93       BL               Breathe_Start ;
+  309 000001C8         Check_Breathe_Leave
+  310 000001C8 E8BD 4004       POP              {R2, LR}    ;
+  311 000001CC BC03            POP              {R0, R1}    ;
+  312 000001CE 4770            BX               LR          ;
+  313 000001D0         
+  314 000001D0         ;-------DEBUG_Init--------------------------------------
                        ----------------------------------------
-  300 000001A6         ;Initiliazing Debug Dump
-  301 000001A6         Debug_Init
-  302 000001A6 B403            PUSH             {R0, R1}
-  303 000001A8 B40C            PUSH             {R2, R3}
-  304 000001AA 4A52            LDR              R2, =data_capture ;
-  305 000001AC 4B52            LDR              R3, =time_capture 
+  315 000001D0         ;Initiliazing Debug Dump
+  316 000001D0         Debug_Init
+  317 000001D0 B403            PUSH             {R0, R1}
+  318 000001D2 B40C            PUSH             {R2, R3}
+  319 000001D4 4A4F            LDR              R2, =data_capture ;
+  320 000001D6 4B50            LDR              R3, =time_capture 
                                                             ;  Created pointers
                                                             
-  306 000001AE F8DF A144       LDR              R10, =data_capture ;
-  307 000001B2 F8DF B144       LDR              R11, =time_capture ;
-  308 000001B6         ; Fill the data array with 0xFF (signifying empty)
-  309 000001B6 F04F 0032       MOV              R0, #50     ;
-  310 000001BA         setting_data_capture
-  311 000001BA F1A0 0001       SUB              R0,R0, #0x01
-  312 000001BE F04F 01FF       MOV              R1, #0xFF   ;  
-  313 000001C2 7011            STRB             R1, [R2]
-  314 000001C4 F102 0201       ADD              R2, R2, #1  ;
-  315 000001C8 2800            CMP              R0, #0x0    ;
-  316 000001CA D1F6            BNE              setting_data_capture
-  317 000001CC         ; Fill the time array with 0xFFFFFFFF (signifying empty)
-                        
-  318 000001CC F04F 0032       MOV              R0, #50     ;
-  319 000001D0         setting_time_capture
-  320 000001D0 F1A0 0001       SUB              R0,R0, #1   ;
-  321 000001D4 F04F 31FF       MOV              R1, #0xFFFFFFFF ;
-  322 000001D8 6019            STR              R1, [R3]
-  323 000001DA F103 0304       ADD              R3, R3, #4  ;
-  324 000001DE 2800            CMP              R0, #0x0    ;
-  325 000001E0 D1F6            BNE              setting_time_capture
-  326 000001E2         RestNEntries
-  327 000001E2 4846            LDR              R0, =NEntries ;
-  328 000001E4 F04F 0200       MOV              R2, #0      ;
-  329 000001E8 7002            STRB             R2, [R0]    ;
-  330 000001EA         
+  321 000001D8         ; Fill the data array with 0xFF (signifying empty)
+  322 000001D8 F04F 0032       MOV              R0, #50     ;
+  323 000001DC         setting_data_capture
+  324 000001DC F1A0 0001       SUB              R0,R0, #0x01
+  325 000001E0 F04F 01FF       MOV              R1, #0xFF   ;  
+  326 000001E4 7011            STRB             R1, [R2]
+  327 000001E6 F102 0201       ADD              R2, R2, #1  ;
+  328 000001EA 2800            CMP              R0, #0x0    ;
 
 
 
 ARM Macro Assembler    Page 11 
 
 
-  331 000001EA BC0C            POP              {R2, R3}
-  332 000001EC BC03            POP              {R0, R1}
-  333 000001EE 4770            BX               LR
-  334 000001F0         
-  335 000001F0         ;-------DEBUG_CAPTURE-----------------------------------
+  329 000001EC D1F6            BNE              setting_data_capture
+  330 000001EE         ; Fill the time array with 0xFFFFFFFF (signifying empty)
+                        
+  331 000001EE F04F 0032       MOV              R0, #50     ;
+  332 000001F2         setting_time_capture
+  333 000001F2 F1A0 0001       SUB              R0,R0, #1   ;
+  334 000001F6 F04F 31FF       MOV              R1, #0xFFFFFFFF ;
+  335 000001FA 6019            STR              R1, [R3]
+  336 000001FC F103 0304       ADD              R3, R3, #4  ;
+  337 00000200 2800            CMP              R0, #0x0    ;
+  338 00000202 D1F6            BNE              setting_time_capture
+  339 00000204         RestNEntries
+  340 00000204 4845            LDR              R0, =NEntries ;
+  341 00000206 F04F 0200       MOV              R2, #0      ;
+  342 0000020A 7002            STRB             R2, [R0]    ;
+  343 0000020C         
+  344 0000020C BC0C            POP              {R2, R3}
+  345 0000020E BC03            POP              {R0, R1}
+  346 00000210 4770            BX               LR
+  347 00000212         
+  348 00000212         ;-------DEBUG_CAPTURE-----------------------------------
                        ----------------------------------------
-  336 000001F0         ; saves one data point
-  337 000001F0         Debug_Capture
-  338 000001F0 B403            PUSH             {R0,R1}
-  339 000001F2 B504            PUSH             {R2,LR}
-  340 000001F4 4841            LDR              R0 , =NEntries
-  341 000001F6 7801            LDRB             R1, [R0]
-  342 000001F8 2932            CMP              R1 , #50
-  343 000001FA D21E            BHS              DONE_C      ;   if (the array i
+  349 00000212         ; saves one data point
+  350 00000212         Debug_Capture
+  351 00000212 B403            PUSH             {R0,R1}
+  352 00000214 B504            PUSH             {R2,LR}
+  353 00000216 4841            LDR              R0 , =NEntries
+  354 00000218 7801            LDRB             R1, [R0]
+  355 0000021A 2932            CMP              R1 , #50
+  356 0000021C D21C            BHS              DONE_C      ;   if (the array i
                                                             s not full)
-  344 000001FC F101 0101       ADD              R1, R1, #1  ;   Add a new entry
+  357 0000021E F101 0101       ADD              R1, R1, #1  ;   Add a new entry
                                                             
-  345 00000200 7001            STRB             R1, [R0]    ;   NEntries++;
-  346 00000202 F109 0901       ADD              R9, R9, #1  ;
-  347 00000206         
-  348 00000206         ; Record the current data entries
-  349 00000206 4838            LDR              R0, =GPIO_PORTE_DATA_R ; 
-  350 00000208 6800            LDR              R0, [R0]    ;
-  351 0000020A F100 0100       ADD              R1, R0, #0  ;
-  352 0000020E F000 0001       AND              R0, R0, #0x01 ;  R0 holds the d
+  358 00000222 7001            STRB             R1, [R0]    ;   NEntries++;
+  359 00000224         ; Record the current data entries
+  360 00000224 4838            LDR              R0, =GPIO_PORTE_DATA_R ; 
+  361 00000226 6800            LDR              R0, [R0]    ;
+  362 00000228 F100 0100       ADD              R1, R0, #0  ;
+  363 0000022C F000 0001       AND              R0, R0, #0x01 ;  R0 holds the d
                                                             ata for PE0
-  353 00000212 F001 0102       AND              R1, R1, #0x02 ;  R1 holds the d
+  364 00000230 F001 0102       AND              R1, R1, #0x02 ;  R1 holds the d
                                                             ata for PE1
-  354 00000216 EA4F 01C1       LSL              R1, R1, #3  ;   Move PE1 to PE4
+  365 00000234 EA4F 01C1       LSL              R1, R1, #3  ;   Move PE1 to PE4
                                                              
-  355 0000021A EA41 0100       ORR              R1, R1, R0  ;   Merge the two b
+  366 00000238 EA41 0100       ORR              R1, R1, R0  ;   Merge the two b
                                                             its (PE0 | PE4)
-  356 0000021E 4835            LDR              R0, =data_capture ;
-  357 00000220 4A36            LDR              R2, =NEntries ;
-  358 00000222 7812            LDRB             R2, [R2]    ;
-  359 00000224 4410            ADD              R0, R0, R2  ;
-  360 00000226 7001            STRB             R1, [R0]    ;   Store the value
+  367 0000023C 4835            LDR              R0, =data_capture ;
+  368 0000023E 4A37            LDR              R2, =NEntries ;
+  369 00000240 7812            LDRB             R2, [R2]    ;
+  370 00000242 4410            ADD              R0, R0, R2  ;
+  371 00000244 7001            STRB             R1, [R0]    ;   Store the value
                                                              in the correct spo
                                                             t on the data array
                                                             
-  361 00000228         ; Record the current time
-  362 00000228 F04F 0004       MOV              R0, #4      ;
-  363 0000022C FB02 F200       MUL              R2, R2, R0  ;   Increment in th
+  372 00000246         ; Record the current time
+  373 00000246 F04F 0004       MOV              R0, #4      ;
+  374 0000024A FB02 F200       MUL              R2, R2, R0  ;   Increment in th
                                                             e time array by 4 b
                                                             ytes
-  364 00000230 4931            LDR              R1, =time_capture ;
-  365 00000232 4411            ADD              R1, R1, R2  ;
-  366 00000234 4832            LDR              R0, =NVIC_ST_CURRENT_R
-  367 00000236 6800            LDR              R0, [R0]    ;
-  368 00000238 6008            STR              R0, [R1]    ;   Store the curre
-                                                            nt time in the corr
-                                                            ect spot on the tim
-                                                            e array
-  369 0000023A         ; Restore the registers and leave
-  370 0000023A         DONE_C
-  371 0000023A E8BD 4004       POP              {R2, LR}    ;   
-  372 0000023E BC03            POP              {R0,R1}
-  373 00000240 4770            BX               LR          ;
-  374 00000242         
 
 
 
 ARM Macro Assembler    Page 12 
 
 
-  375 00000242         ;-------Toggle Green LED (PF2)--------------------------
+  375 0000024E 4932            LDR              R1, =time_capture ;
+  376 00000250 4411            ADD              R1, R1, R2  ;
+  377 00000252 4833            LDR              R0, =NVIC_ST_CURRENT_R
+  378 00000254 6800            LDR              R0, [R0]    ;
+  379 00000256 6008            STR              R0, [R1]    ;   Store the curre
+                                                            nt time in the corr
+                                                            ect spot on the tim
+                                                            e array
+  380 00000258         ; Restore the registers and leave
+  381 00000258         DONE_C
+  382 00000258 E8BD 4004       POP              {R2, LR}    ;   
+  383 0000025C BC03            POP              {R0,R1}
+  384 0000025E 4770            BX               LR          ;
+  385 00000260         
+  386 00000260         ;-------Toggle Green LED (PF2)--------------------------
                        ----------------------------------------
-  376 00000242         ;Toggles the Green LED on and off (PF2)
-  377 00000242         Toggle_Green
-  378 00000242 B403            PUSH             {R0, R1}    ;
-  379 00000244 482A            LDR              R0, =GPIO_PORTF_DATA_R ;
-  380 00000246 6801            LDR              R1, [R0]    ;
-  381 00000248 F081 0104       EOR              R1, #0x04   ;
-  382 0000024C 6001            STR              R1, [R0]    ;
-  383 0000024E BC03            POP              {R0, R1}    ;
-  384 00000250 4770            BX               LR          ;
-  385 00000252         
-  386 00000252         ;-------------------------------------------------------
+  387 00000260         ;Toggles the Green LED on and off (PF2)
+  388 00000260         Toggle_Green
+  389 00000260 B403            PUSH             {R0, R1}    ;
+  390 00000262 482B            LDR              R0, =GPIO_PORTF_DATA_R ;
+  391 00000264 6801            LDR              R1, [R0]    ;
+  392 00000266 F081 0104       EOR              R1, #0x04   ;
+  393 0000026A 6001            STR              R1, [R0]    ;
+  394 0000026C BC03            POP              {R0, R1}    ;
+  395 0000026E 4770            BX               LR          ;
+  396 00000270         
+  397 00000270         ;-------------------------------------------------------
                        ----------------------------------------
-  387 00000252         delay
-  388 00000252         ; a subroutine that loops using the value at R0
-  389 00000252 B403            PUSH             {R0, R1}    ;
-  390 00000254 F04F 0100       MOV              R1, #0      ;
-  391 00000258         delayLoop
-  392 00000258 4288            CMP              R0, R1      ;   Loop until temp
+  398 00000270         delay
+  399 00000270         ; a subroutine that loops using the value at R0
+  400 00000270 B403            PUSH             {R0, R1}    ;
+  401 00000272 F04F 0100       MOV              R1, #0      ;
+  402 00000276         delayLoop
+  403 00000276 4288            CMP              R0, R1      ;   Loop until temp
                                                             orary value, R1, re
                                                             aches R0
-  393 0000025A D002            BEQ              delayDone   ;
-  394 0000025C F101 0101       ADD              R1, R1, #1  ; 
-  395 00000260 E7FA            B                delayLoop   ;
-  396 00000262         delayDone
-  397 00000262 BC03            POP              {R0, R1}    ;
-  398 00000264 4770            BX               LR          ;
-  399 00000266         
-  400 00000266         ;-------------------------------------------------------
+  404 00000278 D002            BEQ              delayDone   ;
+  405 0000027A F101 0101       ADD              R1, R1, #1  ; 
+  406 0000027E E7FA            B                delayLoop   ;
+  407 00000280         delayDone
+  408 00000280 BC03            POP              {R0, R1}    ;
+  409 00000282 4770            BX               LR          ;
+  410 00000284         
+  411 00000284         ;-------------------------------------------------------
                        ----------------------------------------
-  401 00000266         ; Port Initialization
-  402 00000266         Ports_Init
-  403 00000266 B403            PUSH             {R0, R1}    ;
-  404 00000268 B504            PUSH             {R2, LR}    ;
-  405 0000026A 4826            LDR              R0, =SYSCTL_RCGCGPIO_R ;
-  406 0000026C 6801            LDR              R1, [R0]    ;
-  407 0000026E F041 0130       ORR              R1, R1, #0x30 ;   Start up Port
+  412 00000284         ; Port Initialization
+  413 00000284         Ports_Init
+  414 00000284 B403            PUSH             {R0, R1}    ;
+  415 00000286 B504            PUSH             {R2, LR}    ;
+  416 00000288 4826            LDR              R0, =SYSCTL_RCGCGPIO_R ;
+  417 0000028A 6801            LDR              R1, [R0]    ;
+  418 0000028C F041 0130       ORR              R1, R1, #0x30 ;   Start up Port
                                                              F and Port E
-  408 00000272 6001            STR              R1, [R0]    ;
-  409 00000274 BF00            NOP                          ;
-  410 00000276 BF00            NOP                          ;
-  411 00000278         ; Configure Port E
-  412 00000278 4823            LDR              R0, =GPIO_PORTE_DIR_R ;
-  413 0000027A 6801            LDR              R1, [R0]    ;
-  414 0000027C F041 0101       ORR              R1, R1, #0x01 ;    PE0 is set t
-                                                            o output (LED)
-  415 00000280 F021 0112       BIC              R1, R1, #0x12 ;    PE1,4 are se
-                                                            t to input (buttons
-                                                            )
-  416 00000284 6001            STR              R1, [R0]    ;
-  417 00000286 4821            LDR              R0, =GPIO_PORTE_AFSEL_R ;
-  418 00000288 6801            LDR              R1, [R0]    ;
-  419 0000028A F04F 0100       MOV              R1, #0      ;      Disables the
-                                                             "alternate functio
-                                                            ns" in the port
-  420 0000028E 6001            STR              R1, [R0]    ;
-  421 00000290 481F            LDR              R0, =GPIO_PORTE_DEN_R ;
-  422 00000292 6801            LDR              R1, [R0]    ;
+  419 00000290 6001            STR              R1, [R0]    ;
+  420 00000292 BF00            NOP                          ;
+  421 00000294 BF00            NOP                          ;
+  422 00000296         ; Configure Port E
+  423 00000296 4824            LDR              R0, =GPIO_PORTE_DIR_R ;
+  424 00000298 6801            LDR              R1, [R0]    ;
 
 
 
 ARM Macro Assembler    Page 13 
 
 
-  423 00000294 F04F 01FF       MOV              R1, #0xFF   ;     1 means enabl
+  425 0000029A F041 0101       ORR              R1, R1, #0x01 ;    PE0 is set t
+                                                            o output (LED)
+  426 0000029E F021 0112       BIC              R1, R1, #0x12 ;    PE1,4 are se
+                                                            t to input (buttons
+                                                            )
+  427 000002A2 6001            STR              R1, [R0]    ;
+  428 000002A4 4821            LDR              R0, =GPIO_PORTE_AFSEL_R ;
+  429 000002A6 6801            LDR              R1, [R0]    ;
+  430 000002A8 F04F 0100       MOV              R1, #0      ;      Disables the
+                                                             "alternate functio
+                                                            ns" in the port
+  431 000002AC 6001            STR              R1, [R0]    ;
+  432 000002AE 4820            LDR              R0, =GPIO_PORTE_DEN_R ;
+  433 000002B0 6801            LDR              R1, [R0]    ;
+  434 000002B2 F04F 01FF       MOV              R1, #0xFF   ;     1 means enabl
                                                             e digital I/O
-  424 00000298 6001            STR              R1, [R0]    ;
-  425 0000029A         ; Configure Port F
-  426 0000029A 491E            LDR              R1, =GPIO_PORTF_LOCK_R ;  2) un
+  435 000002B6 6001            STR              R1, [R0]    ;
+  436 000002B8         ; Configure Port F
+  437 000002B8 491E            LDR              R1, =GPIO_PORTF_LOCK_R ;  2) un
                                                             lock the lock regis
                                                             ter
-  427 0000029C 481E            LDR              R0, =GPIO_LOCK_KEY ;   unlock G
+  438 000002BA 481F            LDR              R0, =GPIO_LOCK_KEY ;   unlock G
                                                             PIO Port F Commit R
                                                             egister
-  428 0000029E 6008            STR              R0, [R1]    ;
-  429 000002A0 491E            LDR              R1, =GPIO_PORTF_CR_R ;    enabl
+  439 000002BC 6008            STR              R0, [R1]    ;
+  440 000002BE 491F            LDR              R1, =GPIO_PORTF_CR_R ;    enabl
                                                             e commit for Port F
                                                             
-  430 000002A2 F04F 00FF       MOV              R0, #0xFF   ;               1 m
+  441 000002C0 F04F 00FF       MOV              R0, #0xFF   ;               1 m
                                                             eans allow access
-  431 000002A6 6008            STR              R0, [R1]    ;
-  432 000002A8 491D            LDR              R1, =GPIO_PORTF_DIR_R ;   5) se
+  442 000002C4 6008            STR              R0, [R1]    ;
+  443 000002C6 491E            LDR              R1, =GPIO_PORTF_DIR_R ;   5) se
                                                             t direction registe
                                                             r
-  433 000002AA F04F 000E       MOV              R0,#0x0E    ;
-  434 000002AE 6008            STR              R0, [R1]    ;
-  435 000002B0 491C            LDR              R1, =GPIO_PORTF_AFSEL_R ; 6) re
+  444 000002C8 F04F 000E       MOV              R0,#0x0E    ;
+  445 000002CC 6008            STR              R0, [R1]    ;
+  446 000002CE 491D            LDR              R1, =GPIO_PORTF_AFSEL_R ; 6) re
                                                             gular port function
                                                             
-  436 000002B2 F04F 0000       MOV              R0, #0      ;                  
+  447 000002D0 F04F 0000       MOV              R0, #0      ;                  
                                                               0 means disable a
                                                             lternate function
-  437 000002B6 6008            STR              R0, [R1]    ;
-  438 000002B8 491B            LDR              R1, =GPIO_PORTF_PUR_R ;     pul
+  448 000002D4 6008            STR              R0, [R1]    ;
+  449 000002D6 491C            LDR              R1, =GPIO_PORTF_PUR_R ;     pul
                                                             l-up resistors for 
                                                             PF4,PF0
-  439 000002BA F04F 0011       MOV              R0, #0x11   ;                 1
+  450 000002D8 F04F 0011       MOV              R0, #0x11   ;                 1
                                                             )enable for negativ
                                                             e logic
-  440 000002BE 6008            STR              R0, [R1]    ;
-  441 000002C0 491A            LDR              R1, =GPIO_PORTF_DEN_R ;     7) 
+  451 000002DC 6008            STR              R0, [R1]    ;
+  452 000002DE 491B            LDR              R1, =GPIO_PORTF_DEN_R ;     7) 
                                                             enable Port F digit
                                                             al port
-  442 000002C2 F04F 00FF       MOV              R0, #0xFF   ;                 1
+  453 000002E0 F04F 00FF       MOV              R0, #0xFF   ;                 1
                                                              means enable digit
                                                             al I/O
-  443 000002C6 6008            STR              R0, [R1]    ;
-  444 000002C8 E8BD 4004       POP              {R2, LR}    ;
-  445 000002CC BC03            POP              {R0, R1}    ;
-  446 000002CE 4770            BX               LR          ;
-  447 000002D0         
-  448 000002D0         ;-------------------------------------------------------
-                       ----------------------------------------
-  449 000002D0                 ALIGN                        ; make sure the end
-                                                             of this section is
-                                                             aligned
-  450 000002D0                 END                          ; end of file
-              001864A8 
-              00000000 
-              00000000 
-              00000000 
-              00000000 
-              00000000 
+  454 000002E4 6008            STR              R0, [R1]    ;
+  455 000002E6 E8BD 4004       POP              {R2, LR}    ;
+  456 000002EA BC03            POP              {R0, R1}    ;
 
 
 
 ARM Macro Assembler    Page 14 
 
 
+  457 000002EC 4770            BX               LR          ;
+  458 000002EE         
+  459 000002EE         ;-------------------------------------------------------
+                       ----------------------------------------
+  460 000002EE 00 00           ALIGN                        ; make sure the end
+                                                             of this section is
+                                                             aligned
+  461 000002F0                 END                          ; end of file
+              001864A8 
+              00000000 
+              00000000 
+              00000000 
+              00000000 
+              00000000 
               400243FC 
               00000000 
               400253FC 
@@ -890,9 +904,9 @@ Symbol: NEntries
    Definitions
       At line 69 in file main.s
    Uses
-      At line 327 in file main.s
       At line 340 in file main.s
-      At line 357 in file main.s
+      At line 353 in file main.s
+      At line 368 in file main.s
 
 data_capture 0000000E
 
@@ -900,9 +914,8 @@ Symbol: data_capture
    Definitions
       At line 61 in file main.s
    Uses
-      At line 304 in file main.s
-      At line 306 in file main.s
-      At line 356 in file main.s
+      At line 319 in file main.s
+      At line 367 in file main.s
 
 debug_capture_counter 00000108
 
@@ -911,7 +924,7 @@ Symbol: debug_capture_counter
       At line 67 in file main.s
    Uses
       At line 110 in file main.s
-      At line 250 in file main.s
+      At line 265 in file main.s
 
 delay_inc 00000000
 
@@ -922,7 +935,7 @@ Symbol: delay_inc
       At line 92 in file main.s
       At line 95 in file main.s
       At line 102 in file main.s
-      At line 143 in file main.s
+      At line 148 in file main.s
 
 delay_off 00000004
 
@@ -931,16 +944,16 @@ Symbol: delay_off
       At line 55 in file main.s
    Uses
       At line 99 in file main.s
-      At line 145 in file main.s
-      At line 154 in file main.s
+      At line 150 in file main.s
       At line 159 in file main.s
-      At line 170 in file main.s
+      At line 164 in file main.s
+      At line 180 in file main.s
+
 
 
 
 ARM Macro Assembler    Page 2 Alphabetic symbol ordering
 Relocatable symbols
-
 
 delay_on 00000008
 
@@ -949,9 +962,9 @@ Symbol: delay_on
       At line 56 in file main.s
    Uses
       At line 104 in file main.s
-      At line 149 in file main.s
-      At line 161 in file main.s
-      At line 178 in file main.s
+      At line 154 in file main.s
+      At line 166 in file main.s
+      At line 193 in file main.s
 
 green_counter 0000000D
 
@@ -960,7 +973,7 @@ Symbol: green_counter
       At line 58 in file main.s
    Uses
       At line 107 in file main.s
-      At line 269 in file main.s
+      At line 284 in file main.s
 
 prev_button_state 0000000C
 
@@ -968,8 +981,8 @@ Symbol: prev_button_state
    Definitions
       At line 57 in file main.s
    Uses
-      At line 128 in file main.s
-      At line 135 in file main.s
+      At line 127 in file main.s
+      At line 133 in file main.s
 
 time_capture 00000040
 
@@ -977,9 +990,8 @@ Symbol: time_capture
    Definitions
       At line 64 in file main.s
    Uses
-      At line 305 in file main.s
-      At line 307 in file main.s
-      At line 364 in file main.s
+      At line 320 in file main.s
+      At line 375 in file main.s
 
 10 symbols
 
@@ -996,57 +1008,57 @@ Symbol: .text
    Uses
       None
 Comment: .text unused
-Blink 0000009E
+Blink 000000AC
 
 Symbol: Blink
    Definitions
-      At line 164 in file main.s
+      At line 169 in file main.s
    Uses
-      At line 133 in file main.s
-      At line 140 in file main.s
-      At line 157 in file main.s
+      At line 132 in file main.s
+      At line 145 in file main.s
+      At line 162 in file main.s
 
+Blink_Off_Cap_Skip 000000BA
+
+Symbol: Blink_Off_Cap_Skip
+   Definitions
+      At line 175 in file main.s
+   Uses
+      At line 172 in file main.s
+Comment: Blink_Off_Cap_Skip used once
+Blink_On_Cap_Skip 000000DA
+
+Symbol: Blink_On_Cap_Skip
+   Definitions
+      At line 188 in file main.s
+   Uses
+      At line 185 in file main.s
+Comment: Blink_On_Cap_Skip used once
 Blink_ifPushed 00000054
 
 Symbol: Blink_ifPushed
    Definitions
-      At line 126 in file main.s
+      At line 125 in file main.s
    Uses
       None
 Comment: Blink_ifPushed unused
-Blink_incrementDuty 00000072
+Blink_incrementDuty 00000080
 
 Symbol: Blink_incrementDuty
    Definitions
-      At line 141 in file main.s
+      At line 146 in file main.s
    Uses
-      At line 139 in file main.s
+      At line 143 in file main.s
 Comment: Blink_incrementDuty used once
-Breathe 00000114
+Breathe 0000013E
 
 Symbol: Breathe
    Definitions
-      At line 221 in file main.s
+      At line 236 in file main.s
    Uses
-      At line 215 in file main.s
+      At line 230 in file main.s
 Comment: Breathe used once
-Breathe_Start 000000C4
-
-Symbol: Breathe_Start
-   Definitions
-      At line 184 in file main.s
-   Uses
-      At line 293 in file main.s
-Comment: Breathe_Start used once
-Breathe_Stop 0000013A
-
-Symbol: Breathe_Stop
-   Definitions
-      At line 239 in file main.s
-   Uses
-      At line 205 in file main.s
-Comment: Breathe_Stop used once
-Breathe_Verse 00000106
+Breathe_Start 000000EE
 
 
 
@@ -1054,64 +1066,64 @@ ARM Macro Assembler    Page 2 Alphabetic symbol ordering
 Relocatable symbols
 
 
-Symbol: Breathe_Verse
-   Definitions
-      At line 216 in file main.s
-   Uses
-      At line 212 in file main.s
-      At line 213 in file main.s
-
-Breathe_ifPushed 000000EC
-
-Symbol: Breathe_ifPushed
-   Definitions
-      At line 201 in file main.s
-   Uses
-      None
-Comment: Breathe_ifPushed unused
-Breathe_incrementDuty 000000F6
-
-Symbol: Breathe_incrementDuty
-   Definitions
-      At line 207 in file main.s
-   Uses
-      At line 204 in file main.s
-Comment: Breathe_incrementDuty used once
-Breathe_loop 000000E8
-
-Symbol: Breathe_loop
+Symbol: Breathe_Start
    Definitions
       At line 199 in file main.s
    Uses
-      At line 237 in file main.s
+      At line 308 in file main.s
+Comment: Breathe_Start used once
+Breathe_Stop 00000164
+
+Symbol: Breathe_Stop
+   Definitions
+      At line 254 in file main.s
+   Uses
+      At line 220 in file main.s
+Comment: Breathe_Stop used once
+Breathe_Verse 00000130
+
+Symbol: Breathe_Verse
+   Definitions
+      At line 231 in file main.s
+   Uses
+      At line 227 in file main.s
+      At line 228 in file main.s
+
+Breathe_ifPushed 00000116
+
+Symbol: Breathe_ifPushed
+   Definitions
+      At line 216 in file main.s
+   Uses
+      None
+Comment: Breathe_ifPushed unused
+Breathe_incrementDuty 00000120
+
+Symbol: Breathe_incrementDuty
+   Definitions
+      At line 222 in file main.s
+   Uses
+      At line 219 in file main.s
+Comment: Breathe_incrementDuty used once
+Breathe_loop 00000112
+
+Symbol: Breathe_loop
+   Definitions
+      At line 214 in file main.s
+   Uses
+      At line 252 in file main.s
 Comment: Breathe_loop used once
-Check_Breathe 0000018A
+Check_Breathe 000001B4
 
 Symbol: Check_Breathe
    Definitions
-      At line 285 in file main.s
+      At line 300 in file main.s
    Uses
-      At line 123 in file main.s
+      At line 122 in file main.s
 Comment: Check_Breathe used once
-Check_Breathe_Leave 0000019E
+Check_Breathe_Leave 000001C8
 
 Symbol: Check_Breathe_Leave
-   Definitions
-      At line 294 in file main.s
-   Uses
-      At line 292 in file main.s
-Comment: Check_Breathe_Leave used once
-Check_Debug 00000142
-
-Symbol: Check_Debug
-   Definitions
-      At line 247 in file main.s
-   Uses
-      None
-Comment: Check_Debug unused
-Check_Debug_Leave 0000015E
-
-Symbol: Check_Debug_Leave
 
 
 
@@ -1119,26 +1131,51 @@ ARM Macro Assembler    Page 3 Alphabetic symbol ordering
 Relocatable symbols
 
    Definitions
-      At line 259 in file main.s
+      At line 309 in file main.s
    Uses
-      At line 255 in file main.s
+      At line 307 in file main.s
+Comment: Check_Breathe_Leave used once
+Check_Debug 0000016C
+
+Symbol: Check_Debug
+   Definitions
+      At line 262 in file main.s
+   Uses
+      None
+Comment: Check_Debug unused
+Check_Debug_Leave 00000188
+
+Symbol: Check_Debug_Leave
+   Definitions
+      At line 274 in file main.s
+   Uses
+      At line 270 in file main.s
 Comment: Check_Debug_Leave used once
-Check_Green 00000166
+Check_Green 00000190
 
 Symbol: Check_Green
    Definitions
-      At line 266 in file main.s
+      At line 281 in file main.s
    Uses
-      At line 122 in file main.s
+      At line 121 in file main.s
 Comment: Check_Green used once
-Check_Green_Leave 00000182
+Check_Green_Leave 000001AC
 
 Symbol: Check_Green_Leave
    Definitions
-      At line 278 in file main.s
+      At line 293 in file main.s
    Uses
-      At line 274 in file main.s
+      At line 289 in file main.s
 Comment: Check_Green_Leave used once
+Collect_skip 00000076
+
+Symbol: Collect_skip
+   Definitions
+      At line 141 in file main.s
+   Uses
+      At line 137 in file main.s
+      At line 139 in file main.s
+
 Configure 00000010
 
 Symbol: Configure
@@ -1147,36 +1184,11 @@ Symbol: Configure
    Uses
       None
 Comment: Configure unused
-DONE_C 0000023A
+DONE_C 00000258
 
 Symbol: DONE_C
    Definitions
-      At line 370 in file main.s
-   Uses
-      At line 343 in file main.s
-Comment: DONE_C used once
-Debug_Capture 000001F0
-
-Symbol: Debug_Capture
-   Definitions
-      At line 337 in file main.s
-   Uses
-      At line 134 in file main.s
-      At line 256 in file main.s
-
-Debug_Init 000001A6
-
-Symbol: Debug_Init
-   Definitions
-      At line 301 in file main.s
-   Uses
-      At line 79 in file main.s
-Comment: Debug_Init used once
-Ports_Init 00000266
-
-Symbol: Ports_Init
-   Definitions
-      At line 402 in file main.s
+      At line 381 in file main.s
 
 
 
@@ -1184,13 +1196,40 @@ ARM Macro Assembler    Page 4 Alphabetic symbol ordering
 Relocatable symbols
 
    Uses
+      At line 356 in file main.s
+Comment: DONE_C used once
+Debug_Capture 00000212
+
+Symbol: Debug_Capture
+   Definitions
+      At line 350 in file main.s
+   Uses
+      At line 144 in file main.s
+      At line 173 in file main.s
+      At line 186 in file main.s
+      At line 271 in file main.s
+
+Debug_Init 000001D0
+
+Symbol: Debug_Init
+   Definitions
+      At line 316 in file main.s
+   Uses
+      At line 79 in file main.s
+Comment: Debug_Init used once
+Ports_Init 00000284
+
+Symbol: Ports_Init
+   Definitions
+      At line 413 in file main.s
+   Uses
       At line 81 in file main.s
 Comment: Ports_Init used once
-RestNEntries 000001E2
+RestNEntries 00000204
 
 Symbol: RestNEntries
    Definitions
-      At line 326 in file main.s
+      At line 339 in file main.s
    Uses
       None
 Comment: RestNEntries unused
@@ -1202,46 +1241,19 @@ Symbol: Start
    Uses
       At line 73 in file main.s
 Comment: Start used once
-Toggle_Green 00000242
+Toggle_Green 00000260
 
 Symbol: Toggle_Green
    Definitions
-      At line 377 in file main.s
+      At line 388 in file main.s
    Uses
-      At line 275 in file main.s
+      At line 290 in file main.s
 Comment: Toggle_Green used once
-delay 00000252
+delay 00000270
 
 Symbol: delay
    Definitions
-      At line 387 in file main.s
-   Uses
-      At line 172 in file main.s
-      At line 180 in file main.s
-      At line 227 in file main.s
-      At line 234 in file main.s
-
-delayDone 00000262
-
-Symbol: delayDone
-   Definitions
-      At line 396 in file main.s
-   Uses
-      At line 393 in file main.s
-Comment: delayDone used once
-delayLoop 00000258
-
-Symbol: delayLoop
-   Definitions
-      At line 391 in file main.s
-   Uses
-      At line 395 in file main.s
-Comment: delayLoop used once
-main_loop 0000004C
-
-Symbol: main_loop
-   Definitions
-      At line 119 in file main.s
+      At line 398 in file main.s
 
 
 
@@ -1250,24 +1262,51 @@ Relocatable symbols
 
    Uses
       At line 182 in file main.s
+      At line 195 in file main.s
+      At line 242 in file main.s
+      At line 249 in file main.s
+
+delayDone 00000280
+
+Symbol: delayDone
+   Definitions
+      At line 407 in file main.s
+   Uses
+      At line 404 in file main.s
+Comment: delayDone used once
+delayLoop 00000276
+
+Symbol: delayLoop
+   Definitions
+      At line 402 in file main.s
+   Uses
+      At line 406 in file main.s
+Comment: delayLoop used once
+main_loop 0000004C
+
+Symbol: main_loop
+   Definitions
+      At line 119 in file main.s
+   Uses
+      At line 197 in file main.s
 Comment: main_loop used once
-setting_data_capture 000001BA
+setting_data_capture 000001DC
 
 Symbol: setting_data_capture
    Definitions
-      At line 310 in file main.s
+      At line 323 in file main.s
    Uses
-      At line 316 in file main.s
+      At line 329 in file main.s
 Comment: setting_data_capture used once
-setting_time_capture 000001D0
+setting_time_capture 000001F2
 
 Symbol: setting_time_capture
    Definitions
-      At line 319 in file main.s
+      At line 332 in file main.s
    Uses
-      At line 325 in file main.s
+      At line 338 in file main.s
 Comment: setting_time_capture used once
-31 symbols
+34 symbols
 
 
 
@@ -1280,7 +1319,7 @@ Symbol: BREATHE_DELAY_MAX
    Definitions
       At line 44 in file main.s
    Uses
-      At line 192 in file main.s
+      At line 207 in file main.s
 Comment: BREATHE_DELAY_MAX used once
 GPIO_LOCK_KEY 4C4F434B
 
@@ -1288,7 +1327,7 @@ Symbol: GPIO_LOCK_KEY
    Definitions
       At line 36 in file main.s
    Uses
-      At line 427 in file main.s
+      At line 438 in file main.s
 Comment: GPIO_LOCK_KEY used once
 GPIO_PORTE_AFSEL_R 40024420
 
@@ -1296,7 +1335,7 @@ Symbol: GPIO_PORTE_AFSEL_R
    Definitions
       At line 26 in file main.s
    Uses
-      At line 417 in file main.s
+      At line 428 in file main.s
 Comment: GPIO_PORTE_AFSEL_R used once
 GPIO_PORTE_DATA_R 400243FC
 
@@ -1304,11 +1343,11 @@ Symbol: GPIO_PORTE_DATA_R
    Definitions
       At line 24 in file main.s
    Uses
-      At line 127 in file main.s
-      At line 166 in file main.s
-      At line 174 in file main.s
-      At line 190 in file main.s
-      At line 349 in file main.s
+      At line 126 in file main.s
+      At line 176 in file main.s
+      At line 189 in file main.s
+      At line 205 in file main.s
+      At line 360 in file main.s
 
 GPIO_PORTE_DEN_R 4002451C
 
@@ -1316,7 +1355,7 @@ Symbol: GPIO_PORTE_DEN_R
    Definitions
       At line 27 in file main.s
    Uses
-      At line 421 in file main.s
+      At line 432 in file main.s
 Comment: GPIO_PORTE_DEN_R used once
 GPIO_PORTE_DIR_R 40024400
 
@@ -1324,7 +1363,7 @@ Symbol: GPIO_PORTE_DIR_R
    Definitions
       At line 25 in file main.s
    Uses
-      At line 412 in file main.s
+      At line 423 in file main.s
 Comment: GPIO_PORTE_DIR_R used once
 GPIO_PORTF_AFSEL_R 40025420
 
@@ -1332,7 +1371,7 @@ Symbol: GPIO_PORTF_AFSEL_R
    Definitions
       At line 31 in file main.s
    Uses
-      At line 435 in file main.s
+      At line 446 in file main.s
 
 
 
@@ -1346,7 +1385,7 @@ Symbol: GPIO_PORTF_CR_R
    Definitions
       At line 35 in file main.s
    Uses
-      At line 429 in file main.s
+      At line 440 in file main.s
 Comment: GPIO_PORTF_CR_R used once
 GPIO_PORTF_DATA_R 400253FC
 
@@ -1354,9 +1393,9 @@ Symbol: GPIO_PORTF_DATA_R
    Definitions
       At line 29 in file main.s
    Uses
-      At line 191 in file main.s
-      At line 288 in file main.s
-      At line 379 in file main.s
+      At line 206 in file main.s
+      At line 303 in file main.s
+      At line 390 in file main.s
 
 GPIO_PORTF_DEN_R 4002551C
 
@@ -1364,7 +1403,7 @@ Symbol: GPIO_PORTF_DEN_R
    Definitions
       At line 33 in file main.s
    Uses
-      At line 441 in file main.s
+      At line 452 in file main.s
 Comment: GPIO_PORTF_DEN_R used once
 GPIO_PORTF_DIR_R 40025400
 
@@ -1372,7 +1411,7 @@ Symbol: GPIO_PORTF_DIR_R
    Definitions
       At line 30 in file main.s
    Uses
-      At line 432 in file main.s
+      At line 443 in file main.s
 Comment: GPIO_PORTF_DIR_R used once
 GPIO_PORTF_LOCK_R 40025520
 
@@ -1380,7 +1419,7 @@ Symbol: GPIO_PORTF_LOCK_R
    Definitions
       At line 34 in file main.s
    Uses
-      At line 426 in file main.s
+      At line 437 in file main.s
 Comment: GPIO_PORTF_LOCK_R used once
 GPIO_PORTF_PUR_R 40025510
 
@@ -1388,7 +1427,7 @@ Symbol: GPIO_PORTF_PUR_R
    Definitions
       At line 32 in file main.s
    Uses
-      At line 438 in file main.s
+      At line 449 in file main.s
 Comment: GPIO_PORTF_PUR_R used once
 MAX_DELAY 001864A8
 
@@ -1397,7 +1436,7 @@ Symbol: MAX_DELAY
       At line 42 in file main.s
    Uses
       At line 89 in file main.s
-      At line 158 in file main.s
+      At line 163 in file main.s
 
 
 
@@ -1411,7 +1450,7 @@ Symbol: NVIC_ST_CURRENT_R
    Definitions
       At line 39 in file main.s
    Uses
-      At line 366 in file main.s
+      At line 377 in file main.s
 Comment: NVIC_ST_CURRENT_R used once
 SYSCTL_RCGCGPIO_R 400FE608
 
@@ -1419,7 +1458,7 @@ Symbol: SYSCTL_RCGCGPIO_R
    Definitions
       At line 37 in file main.s
    Uses
-      At line 405 in file main.s
+      At line 416 in file main.s
 Comment: SYSCTL_RCGCGPIO_R used once
 16 symbols
 
@@ -1445,4 +1484,4 @@ Symbol: TExaS_Init
       At line 78 in file main.s
 Comment: TExaS_Init used once
 2 symbols
-392 symbols in table
+395 symbols in table

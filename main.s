@@ -59,11 +59,11 @@ green_counter	  SPACE 1	; it counts everytime the main loop is run and toggles t
 	
 	;Debugging arrays
 data_capture  	SPACE 50	; Array of 50 8-byte numbers
-							; 0x2000003e
-							; 0x20000090
+							; Start: 0x2000003f
+							; End:	 0x20000090
 time_capture	SPACE 200	; Array of 50 32-byte numbers
-							; 0x20000070
-							; 0x20000138
+							; Start: 0x20000074
+							; End:	 0x20000138
 debug_capture_counter	SPACE	1	; it counts everytime the main loop is run and captures debugging data after a certain amount of loops
 	
 NEntries 		SPACE 1		; Number of entries in either array
@@ -111,14 +111,13 @@ Configure
 	MOV	R2, #0;
 	STRB R2, [R1];			Initially set the debug_counter to 0
 	
-	MOV R9, #0;
+	MOV R12, #0;			R12 will be used to quickly collect the seven states after release
 	
     CPSIE  I    ; TExaS voltmeter, scope runs on interrupts
 
 ; The main loop engine
 main_loop  
 
-	;BL	Check_Debug;	; Check if we need to record debugging statistics
 	BL	Check_Green		; Check whether to toggle the green LED on or not
 	BL	Check_Breathe	; Check if whether we need to make the LED Breathe
 
@@ -131,12 +130,18 @@ Blink_ifPushed
 	AND	R3, R3, #0x02;			Check whether the button has been pushed or not
 	CMP R3, R2;					<- Check if the button is in the same state as before 
 	BEQ Blink;
-	BL	Debug_Capture;
 	LDR	R2, =prev_button_state;
 	STRB R3, [R2];
 ; If the button is pushed, set PE4 to 1
-	CMP	R3, #0x00;			If the button is pushed
+	CMP	R3, #0x00;			If the button is released
+	BNE	Collect_skip;
+	CMP	R12, #0;
+	BNE	Collect_skip;
+	MOV	R12, #7;
+Collect_skip
+	CMP	R3, #0x02;			If the button is pushed
 	BNE	Blink_incrementDuty;
+	BL	Debug_Capture;
 	B Blink;
 Blink_incrementDuty
 ; Incrementing the duty time
@@ -163,6 +168,11 @@ Blink_incrementDuty
 	STR	R2, [R1];
 Blink
 ; Turn off the light and wait
+	CMP	R12, #0;
+	BEQ	Blink_Off_Cap_Skip
+	BL Debug_Capture;
+	SUB	R12, R12, #1;
+Blink_Off_Cap_Skip
 	LDR	R1, =GPIO_PORTE_DATA_R;
 	LDR	R2, [R1];
 	BIC	R2, #0x01;
@@ -171,6 +181,11 @@ Blink
 	LDR R0, [R2];
 	BL	delay;	;BL	delay;	Delay the program for a amount of time specified in R0
 ; Turn on the light and wait
+	CMP	R12, #0;
+	BEQ	Blink_On_Cap_Skip
+	BL Debug_Capture;
+	SUB	R12, R12, #1;
+Blink_On_Cap_Skip
 	LDR	R1, =GPIO_PORTE_DATA_R;
 	LDR	R2, [R1];
 	ORR	R2, #0x01;		
@@ -303,8 +318,6 @@ Debug_Init
 	PUSH {R2, R3}
 	LDR R2, =data_capture;
 	LDR R3, =time_capture;		Created pointers
-	LDR R10, =data_capture;
-	LDR	R11, =time_capture;
 ; Fill the data array with 0xFF (signifying empty)
 	MOV R0, #50;
 setting_data_capture
@@ -343,8 +356,6 @@ Debug_Capture
 	BHS DONE_C;			if (the array is not full)
 	ADD	R1, R1, #1;			Add a new entry
 	STRB R1, [R0];			NEntries++;
-	ADD	R9, R9, #1;
-	
 ; Record the current data entries
 	LDR R0, =GPIO_PORTE_DATA_R;	
 	LDR	R0, [R0];
